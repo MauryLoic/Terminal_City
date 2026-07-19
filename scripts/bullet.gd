@@ -72,6 +72,8 @@ func _on_arrive() -> void:
 				_collider.apply_central_impulse(_impulse)
 			# Dégâts : les objets avec des PV finissent par être détruits
 			if _collider.has_meta("hp"):
+				if _collider.has_method("on_hit"):
+					_collider.on_hit()
 				var hp: float = _collider.get_meta("hp") - 1.0
 				if hp <= 0.0:
 					_destroy(_collider)
@@ -98,6 +100,7 @@ func _destroy(obj: Node3D) -> void:
 	debris.piece_size = float(obj.get_meta("debris_size", 0.15))
 	debris.position = obj.global_position
 	get_tree().current_scene.add_child(debris)
+	Sfx.play_explosion(obj.global_position)
 	# Hook pour les objets à logique de mort (loot, signal de respawn...)
 	if obj.has_method("on_destroyed"):
 		obj.on_destroyed()

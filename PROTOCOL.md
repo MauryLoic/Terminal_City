@@ -1,7 +1,7 @@
 # PROTOCOL.md — Protocole réseau Terminal_City v1
 
 Spec du protocole client Godot <-> serveur (à implémenter côté
-Akka/Pekko IO UDP ou C). Transport : **UDP**, un message JSON par datagramme,
+Akka/Pekko IO UDP). Transport : **UDP**, un message JSON par datagramme,
 encodé UTF-8, sans délimiteur (1 datagramme = 1 message).
 
 Le client est déjà implémenté dans `scripts/network_client.gd` — ce

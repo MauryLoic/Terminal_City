@@ -1,22 +1,32 @@
 extends CharacterBody3D
-## Chauve-souris vampire mutante des wastelands (inspirée du bestiaire
-## de Neocron). Vole en orbite autour du joueur, crache des globes
-## d'acide, meurt en 5 balles (métadonnées lues par bullet.gd) et
-## laisse parfois tomber une trousse de soin.
+## Chauve-souris vampire mutante des wastelands. Vit en meute de deux.
+##
+## PASSIVE par défaut : elle patrouille tranquillement autour de son
+## perchoir (home). Elle devient AGRESSIVE si le joueur s'approche trop
+## (< AGGRO_RANGE) ou si un membre de la meute est attaqué — auquel cas
+## LES DEUX répondent. Elle se calme si le joueur s'éloigne assez
+## (> LOSE_RANGE), ce qui laisse une fenêtre pour récupérer.
 
 signal died(pos: Vector3)
 
 const FLY_SPEED := 6.5
 const ORBIT_RADIUS := 9.0
 const ATTACK_RANGE := 30.0
+const AGGRO_RANGE := 9.0     # distance de déclenchement
+const LOSE_RANGE := 45.0     # distance de désengagement
 const AcidScript := preload("res://scripts/acid_glob.gd")
 const PickupScript := preload("res://scripts/pickup.gd")
+
+var pack_id := 0             # les membres d'une même meute partagent cet id
+var home := Vector3.ZERO     # centre de patrouille (posé par le spawner)
+var aggro := false
 
 var _t := randf() * TAU
 var _orbit := randf() * TAU
 var _shoot_t := randf_range(1.5, 3.0)
 var _wing_l: Node3D
 var _wing_r: Node3D
+var _fur: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -26,6 +36,8 @@ func _ready() -> void:
 	set_meta("debris_color", Color(0.25, 0.18, 0.16))
 	set_meta("debris_count", 8)
 	set_meta("debris_size", 0.1)
+	if home == Vector3.ZERO:
+		home = global_position
 	_build_model()
 	var cs := CollisionShape3D.new()
 	var sp := SphereShape3D.new()
@@ -39,33 +51,72 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	_t += delta
-	_orbit += delta * 0.5
-
-	# Vol : orbite autour du joueur, ~5 m au-dessus, avec un ondoiement
 	var ppos: Vector3 = player.global_position
-	var target := ppos + Vector3(
-		cos(_orbit) * ORBIT_RADIUS,
-		5.0 + sin(_t * 2.0) * 1.2,
-		sin(_orbit) * ORBIT_RADIUS
-	)
-	velocity = (target - global_position).limit_length(FLY_SPEED)
+	var dist := global_position.distance_to(ppos)
+
+	# Transitions d'état
+	if not aggro and dist < AGGRO_RANGE:
+		_alert_pack()
+	elif aggro and dist > LOSE_RANGE:
+		aggro = false
+
+	var target: Vector3
+	if aggro:
+		# Chasse : orbite autour du joueur, ~5 m au-dessus
+		_orbit += delta * 0.5
+		target = ppos + Vector3(
+			cos(_orbit) * ORBIT_RADIUS,
+			5.0 + sin(_t * 2.0) * 1.2,
+			sin(_orbit) * ORBIT_RADIUS
+		)
+	else:
+		# Patrouille paisible : ronde lente autour du perchoir
+		_orbit += delta * 0.25
+		target = home + Vector3(
+			cos(_orbit) * 6.0,
+			4.0 + sin(_t * 1.5) * 1.0,
+			sin(_orbit) * 6.0
+		)
+
+	velocity = (target - global_position).limit_length(FLY_SPEED if aggro else FLY_SPEED * 0.5)
 	move_and_slide()
 
-	# Toujours face au joueur
-	var flat := Vector3(ppos.x, global_position.y, ppos.z)
+	# Orientation : vers le joueur en chasse, vers sa route en patrouille
+	var face := ppos if aggro else target
+	var flat := Vector3(face.x, global_position.y, face.z)
 	if global_position.distance_to(flat) > 1.0:
 		look_at(flat, Vector3.UP)
 
-	# Battement d'ailes
-	var flap := sin(_t * 12.0) * 0.65
+	# Battement d'ailes (plus nerveux en chasse)
+	var flap := sin(_t * (12.0 if aggro else 7.0)) * 0.65
 	_wing_l.rotation.z = -flap
 	_wing_r.rotation.z = flap
 
-	# Crachat d'acide périodique
-	_shoot_t -= delta
-	if _shoot_t <= 0.0 and global_position.distance_to(ppos) < ATTACK_RANGE:
-		_shoot_t = randf_range(2.2, 3.5)
-		_spit_acid(ppos)
+	# Crachat d'acide : uniquement en chasse
+	if aggro:
+		_shoot_t -= delta
+		if _shoot_t <= 0.0 and dist < ATTACK_RANGE:
+			_shoot_t = randf_range(2.2, 3.5)
+			_spit_acid(ppos)
+
+
+## Appelé par bullet.gd à chaque balle encaissée : flash rouge et
+## toute la meute passe à l'attaque.
+func on_hit() -> void:
+	_flash()
+	_alert_pack()
+
+
+func _alert_pack() -> void:
+	for b in get_tree().get_nodes_in_group("bat"):
+		if b.pack_id == pack_id:
+			b.aggro = true
+
+
+func _flash() -> void:
+	_fur.albedo_color = Color(0.9, 0.25, 0.2)
+	var tw := create_tween()
+	tw.tween_property(_fur, "albedo_color", Color(0.22, 0.17, 0.15), 0.25)
 
 
 func _spit_acid(target: Vector3) -> void:
@@ -75,6 +126,7 @@ func _spit_acid(target: Vector3) -> void:
 	glob.direction = dir
 	glob.position = global_position + dir * 0.8
 	get_tree().current_scene.add_child(glob)
+	Sfx.play_acid(global_position)
 
 
 ## Appelé par bullet.gd juste avant la destruction : loot + signal
@@ -90,9 +142,9 @@ func on_destroyed() -> void:
 
 
 func _build_model() -> void:
-	var fur := StandardMaterial3D.new()
-	fur.albedo_color = Color(0.22, 0.17, 0.15)
-	fur.roughness = 1.0
+	_fur = StandardMaterial3D.new()
+	_fur.albedo_color = Color(0.22, 0.17, 0.15)
+	_fur.roughness = 1.0
 	var membrane := StandardMaterial3D.new()
 	membrane.albedo_color = Color(0.13, 0.09, 0.09)
 	membrane.roughness = 1.0
@@ -101,7 +153,7 @@ func _build_model() -> void:
 	var bm := SphereMesh.new()
 	bm.radius = 0.3
 	bm.height = 0.5
-	bm.material = fur
+	bm.material = _fur
 	body.mesh = bm
 	add_child(body)
 
@@ -109,7 +161,7 @@ func _build_model() -> void:
 	var hm := SphereMesh.new()
 	hm.radius = 0.17
 	hm.height = 0.34
-	hm.material = fur
+	hm.material = _fur
 	head.mesh = hm
 	head.position = Vector3(0, 0.12, -0.3)
 	add_child(head)
@@ -120,7 +172,7 @@ func _build_model() -> void:
 		em.top_radius = 0.0
 		em.bottom_radius = 0.05
 		em.height = 0.16
-		em.material = fur
+		em.material = _fur
 		ear.mesh = em
 		ear.position = Vector3(side * 0.08, 0.3, -0.3)
 		add_child(ear)

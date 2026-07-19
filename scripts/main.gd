@@ -114,6 +114,7 @@ func _ensure_remote(id: int) -> Node3D:
 ## la direction viennent du serveur) puis on rejoue la balle traçante et
 ## l'impact — purement cosmétique, comme pour le tir local.
 func _on_remote_shot(_id: int, origin: Vector3, direction: Vector3) -> void:
+	Sfx.play_gunshot(origin)
 	var dir := direction.normalized()
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * 100.0)

@@ -165,6 +165,8 @@ func _shoot() -> void:
 		muzzle = camera.global_transform * Vector3(0.2, -0.2, -0.7)
 	var aim_dir := -camera.global_transform.basis.z
 
+	Sfx.play_gunshot(muzzle)
+
 	# En ligne : notifier le serveur (les autres clients rejoueront le tir)
 	Net.send_shoot(muzzle, aim_dir)
 

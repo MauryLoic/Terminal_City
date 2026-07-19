@@ -9,7 +9,7 @@ const PALETTE := {
 	"wood":  {"spark": Color(0.68, 0.46, 0.2), "mark": Color(0.14, 0.09, 0.05, 0.9), "glow": false},
 	"bush":  {"spark": Color(0.58, 0.42, 0.2), "mark": Color(0, 0, 0, 0), "glow": false},
 	"metal": {"spark": Color(1.0, 0.6, 0.15), "mark": Color(0.08, 0.08, 0.08, 0.9), "glow": true},
-	"flesh": {"spark": Color(0.55, 0.08, 0.08), "mark": Color(0, 0, 0, 0), "glow": false},
+	"flesh": {"spark": Color(0.6, 0.07, 0.07), "mark": Color(0, 0, 0, 0), "glow": false, "amount": 22, "size": 0.075},
 	"acid":  {"spark": Color(0.35, 0.9, 0.2), "mark": Color(0.15, 0.4, 0.1, 0.85), "glow": true},
 }
 
@@ -60,9 +60,10 @@ func _make_mark(mark_color: Color) -> void:
 
 
 func _make_sparks(spark_color: Color, glow: bool) -> void:
+	var pal: Dictionary = PALETTE[_mat_type]
 	var p := CPUParticles3D.new()
 	p.one_shot = true
-	p.amount = 14
+	p.amount = int(pal.get("amount", 14))
 	p.lifetime = 0.35
 	p.explosiveness = 1.0
 	p.direction = Vector3.UP
@@ -74,7 +75,8 @@ func _make_sparks(spark_color: Color, glow: bool) -> void:
 	p.scale_amount_max = 1.0
 
 	var m := BoxMesh.new()
-	m.size = Vector3(0.05, 0.05, 0.05)
+	var sz: float = pal.get("size", 0.05)
+	m.size = Vector3(sz, sz, sz)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = spark_color
 	if glow:

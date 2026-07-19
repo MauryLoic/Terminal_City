@@ -1,8 +1,8 @@
-# Terminal_City — wasteland post-nucléaire (client Godot 4)
+# Terminal_City — client Godot 4
 
-Prototype d'environnement extérieur inspiré des wastelands de Neocron :
-terrain accidenté irradié, rivière contaminée, ciel rougeâtre, végétation
-morte. Base client pour le futur serveur Akka/Pekko UDP.
+MMOFPS post-apocalyptique en cours de développement, inspiré des
+wastelands de Neocron : terrain irradié, rivière contaminée, faune
+mutante. Client Godot 4, serveur Akka/Pekko UDP (voir PROTOCOL.md).
 
 ## Ouvrir et jouer
 
@@ -11,49 +11,56 @@ morte. Base client pour le futur serveur Akka/Pekko UDP.
 
 ## Contrôles
 
-Identiques au MiniFPS : ZQSD (keycodes physiques), souris, Espace (saut),
-Shift (sprint), clic gauche (tir traçant + impacts), Échap (souris).
+| Touche          | Action                                        |
+|-----------------|-----------------------------------------------|
+| ZQSD            | Déplacement (keycodes physiques, AZERTY ok)   |
+| Souris          | Regarder — clic gauche maintenu : tir continu |
+| Espace          | Sauter                                        |
+| Shift           | Sprint (consomme l'endurance)                 |
+| Ctrl            | S'accroupir (maintenu)                        |
+| C               | S'accroupir (verrouillé)                      |
+| Alt+E           | Vue 1re / 3e personne                         |
+| I               | Inventaire                                    |
+| F1              | Panneau de connexion au serveur               |
+| Échap           | Libérer / recapturer la souris                |
 
 ## Le monde
 
-Tout est **généré procéduralement au chargement** dans `world_gen.gd`,
-avec une seed fixe (1337) — le monde est donc identique à chaque
-lancement (important pour le futur multijoueur : même seed côté serveur
-= même terrain pour tous).
+Généré procéduralement au chargement (`world_gen.gd`, seed fixe — même
+seed côté serveur = même monde pour tous). Terrain accidenté ceint de
+dunes-montagnes, rivière toxique (6 PV/s dedans !), bâtisses en pierre
+et cabanes abandonnées, arbres morts, rochers, débris.
 
-- **Terrain** 240×240 m : deux couches de bruit fractal (FastNoiseLite),
-  mesh construit avec SurfaceTool + collision HeightMapShape3D alignée
-  sur la même grille de hauteurs.
-- **Rivière** : un lit sinusoïdal est creusé dans la fonction de hauteur
-  (smoothstep pour des berges douces), l'eau est un plan vert toxique
-  semi-transparent légèrement émissif à y = -1,1. Les creux du terrain
-  sous ce niveau forment aussi des mares contaminées.
-- **Couleurs du sol** : par vertex selon l'altitude — boue sombre près de
-  l'eau, terre brun-rouge, sable rougeâtre sur les hauteurs.
-- **Ambiance** : ciel procédural rouge sombre, soleil bas orangé, brume
-  de distance rougeâtre (fog exponentiel).
-- **Props** : ~35 arbres morts (troncs coniques + branches nues), ~90
-  buissons secs, ~45 rochers, posés au sol via `get_height()` et jamais
-  dans la rivière.
+## Gameplay actuel
+
+- Vie + endurance (le sprint draine, marcher régénère)
+- Système de matériaux : impacts visuels par surface (terre, pierre,
+  bois, métal, chair, acide), objets poussables selon leur masse,
+  destruction à trois vitesses (indestructible / lente / rapide)
+- Chauves-souris vampires en meutes de deux : passives en patrouille,
+  toute la meute attaque (crachats d'acide) si on approche ou tire ;
+  désengagement à distance ; loot de trousses de soin ; respawn 10 s
+- Inventaire en grille, perdu intégralement à la mort
+- Sons synthétisés en code (aucun asset audio)
+
+## Multijoueur
+
+Client réseau UDP complet (`network_client.gd`, autoload `Net`) :
+join/welcome, positions à 20 Hz avec numéros de séquence, relai des
+tirs, ping, timeout. Les joueurs distants sont interpolés. Le serveur
+Akka/Pekko est à implémenter en miroir de **PROTOCOL.md**.
 
 ## Structure
 
 ```
 project.godot
-scenes/main.tscn      environnement (ciel, brume), soleil, monde, joueur
-scenes/player.tscn    contrôleur FPS (repris du MiniFPS)
-scripts/world_gen.gd  génération du terrain, rivière, eau, props
-scripts/main.gd       soleil + spawn du joueur au sol
-scripts/player.gd     mouvement, vue souris, tir
-scripts/bullet.gd     balle traçante
-scripts/impact.gd     étincelles + marque d'impact
+scenes/    main, player, remote_player, ak47, private_eye, psi_monk,
+           connect_ui, inventory_ui
+scripts/   world_gen (terrain + props), player, bullet, impact, debris,
+           bat + bat_spawner + acid_glob + pickup, inventory (+ ui),
+           network_client, sfx, main, modèles (ak47, private_eye...)
 ```
 
-## Pistes suivantes
-
-- Zone `Area3D` sur l'eau → dégâts de poison au contact (comme les
-  zones irradiées de Neocron).
-- Compteur Geiger sonore près de zones chaudes.
-- Ruines industrielles / carcasses en primitives.
-- Réseau : `NetworkClient` autoload en PacketPeerUDP, la seed du monde
-  envoyée par le serveur à la connexion.
+Tous les assets (3D et audio) sont générés en code — à remplacer
+progressivement par de vrais assets (glTF depuis Blender, samples .ogg)
+sans toucher à la logique.

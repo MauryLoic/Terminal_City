@@ -1,6 +1,6 @@
 extends Node3D
 ## Personnage style Private Eye : long imperméable, plastron blindé,
-## lunettes noires et fedora — le détective urbain, comme dans Neocron.
+## lunettes noires et fedora — le détective urbain de Neocron.
 ## Avant du personnage : -Z. Tient une AK-47 (avec son Marker3D "Muzzle").
 ## Sert de modèle au joueur local (3e personne) et aux joueurs distants.
 
