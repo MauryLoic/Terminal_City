@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/remote_player.gd" id="1_remote"]
+[ext_resource type="PackedScene" path="res://scenes/private_eye.tscn" id="2_monk"]
+
+[node name="RemotePlayer" type="Node3D"]
+script = ExtResource("1_remote")
+
+[node name="Body" parent="." instance=ExtResource("2_monk")]
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+
+[node name="NameLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, 0)
+billboard = 1
+text = "Runner"
+font_size = 48
+outline_size = 8

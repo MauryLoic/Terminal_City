@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/connect_ui.gd" id="1_ui"]
+
+[node name="ConnectUi" type="CanvasLayer"]
+script = ExtResource("1_ui")
+
+[node name="Panel" type="Panel" parent="."]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 280.0
+offset_bottom = 190.0
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="Panel/VBox"]
+text = "Serveur (F1 : afficher/masquer)"
+
+[node name="HostEdit" type="LineEdit" parent="Panel/VBox"]
+text = "127.0.0.1:4242"
+placeholder_text = "hôte:port"
+
+[node name="NameEdit" type="LineEdit" parent="Panel/VBox"]
+text = "Runner"
+placeholder_text = "Pseudo"
+
+[node name="ConnectButton" type="Button" parent="Panel/VBox"]
+text = "Se connecter"
+
+[node name="Status" type="Label" parent="Panel/VBox"]
+text = "Hors ligne"
+autowrap_mode = 3
