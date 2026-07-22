@@ -1,6 +1,6 @@
 extends Control
-## Floating mob health bars: projected on screen above
-## each bat (dark background + red fill based on HP).
+## Floating mob health bars: projected on screen above each mob in
+## the "mob" group (dark background + red fill based on HP).
 
 const BAR_W := 46.0
 const BAR_H := 5.0
@@ -19,10 +19,10 @@ func _draw() -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	for b in get_tree().get_nodes_in_group("bat"):
+	for b in get_tree().get_nodes_in_group("mob"):
 		if not (b is Node3D) or not b.has_meta("hp"):
 			continue
-		var world_pos: Vector3 = b.global_position + Vector3(0, 1.0, 0)
+		var world_pos: Vector3 = b.global_position + Vector3(0, float(b.get_meta("bar_height", 1.0)), 0)
 		if cam.is_position_behind(world_pos):
 			continue
 		if cam.global_position.distance_to(world_pos) > MAX_DIST:

@@ -1,9 +1,9 @@
 extends Area3D
-## Acid glob spat by the bats: flies in a straight line,
-## hurts the player on contact, splashes the scenery otherwise.
+## Plasma bolt fired by warbots: flies straight, burns the player on
+## contact, splashes the scenery with metal-like sparks otherwise.
 
-const SPEED := 13.0
-const DAMAGE := 12.0
+const SPEED := 16.0
+const DAMAGE := 15.0
 
 var direction := Vector3.FORWARD
 var _life := 4.0
@@ -12,19 +12,20 @@ var _life := 4.0
 func _ready() -> void:
 	var cs := CollisionShape3D.new()
 	var sp := SphereShape3D.new()
-	sp.radius = 0.18
+	sp.radius = 0.2
 	cs.shape = sp
 	add_child(cs)
 
 	var mi := MeshInstance3D.new()
 	var mesh := SphereMesh.new()
-	mesh.radius = 0.15
-	mesh.height = 0.3
+	mesh.radius = 0.16
+	mesh.height = 0.32
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.35, 0.9, 0.2)
+	mat.albedo_color = Color(1.0, 0.5, 0.12)
 	mat.emission_enabled = true
-	mat.emission = Color(0.3, 0.85, 0.15)
-	mat.emission_energy_multiplier = 1.6
+	mat.emission = Color(1.0, 0.4, 0.08)
+	mat.emission_energy_multiplier = 2.0
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh.material = mat
 	mi.mesh = mesh
 	add_child(mi)
@@ -50,5 +51,5 @@ func _on_body(body: Node3D) -> void:
 
 func _splash() -> void:
 	var impact := preload("res://scripts/impact.gd").new()
-	impact.setup(global_position, Vector3.UP, "acid")
+	impact.setup(global_position, Vector3.UP, "metal")
 	get_tree().current_scene.add_child(impact)

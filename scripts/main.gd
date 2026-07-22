@@ -39,6 +39,9 @@ func _ready() -> void:
 	var spawner := Node.new()
 	spawner.set_script(preload("res://scripts/bat_spawner.gd"))
 	add_child(spawner)
+	var warbots := Node.new()
+	warbots.set_script(preload("res://scripts/warbot_spawner.gd"))
+	add_child(warbots)
 
 
 ## Places the player on the ground, on the south bank of the river.

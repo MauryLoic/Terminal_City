@@ -11,6 +11,10 @@ const GRAVITY := 14.0
 const MOUSE_SENSITIVITY := 0.002
 const SHOOT_FORCE := 10.0
 const FIRE_RATE := 9.0   # bullets/second while firing (AK-like rate)
+const AK_AMMO_START := 90
+const LASER_AMMO_START := 6
+const AK_AMMO_RESPAWN := 30     # given back on death so you can still fight
+const LASER_AMMO_RESPAWN := 2
 const FOV_ZOOM := 48.0       # aimed-in field of view (right click held)
 const ZOOM_SPEED := 10.0     # FOV transition speed
 const ZOOM_SENS_FACTOR := 0.6  # mouse sensitivity multiplier while zoomed
@@ -62,6 +66,8 @@ var _burst_left := 0
 var _prev_fire_pressed := false
 var _lock := 0.0                 # aim lock progress (0..1)
 var _lock_target: Node3D = null
+var ak_ammo := AK_AMMO_START
+var laser_ammo := LASER_AMMO_START
 var _zoomed := false
 var _fov_normal := 75.0          # captured from the camera in _ready
 
@@ -232,15 +238,30 @@ func _physics_process(delta: float) -> void:
 	if weapon == Weapon.AK:
 		if fire_pressed and not _prev_fire_pressed \
 				and _burst_left == 0 and _fire_cd == 0.0:
-			_burst_left = 3
+			if ak_ammo > 0:
+				_burst_left = 3
+			else:
+				Sfx.play_click()   # dry fire: out of ammo
+				_fire_cd = 0.3
 		if _burst_left > 0 and _fire_cd == 0.0:
-			_burst_left -= 1
-			_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
-			_shoot()
+			if ak_ammo <= 0:
+				_burst_left = 0   # magazine ran dry mid-burst
+			else:
+				ak_ammo -= 1
+				_burst_left -= 1
+				_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
+				_shoot()
+				_update_weapon_ui()
 	else:
 		if fire_pressed and not _prev_fire_pressed and _laser_cd == 0.0:
-			_laser_cd = LASER_COOLDOWN
-			_shoot_laser()
+			if laser_ammo > 0:
+				laser_ammo -= 1
+				_laser_cd = LASER_COOLDOWN
+				_shoot_laser()
+				_update_weapon_ui()
+			else:
+				Sfx.play_click()   # dry fire: no cells left
+				_laser_cd = 0.4
 	_prev_fire_pressed = fire_pressed
 
 
@@ -313,13 +334,25 @@ func heal(amount: float) -> void:
 	health = minf(health + amount, MAX_HEALTH)
 
 
+## Ammo added by the crafting window ("ak" or "laser").
+func add_ammo(kind: String, n: int) -> void:
+	if kind == "ak":
+		ak_ammo += n
+	else:
+		laser_ammo += n
+	_update_weapon_ui()
+
+
 ## Death: back to the spawn point, health and stamina restored,
-## but the ENTIRE inventory is lost.
+## but the ENTIRE inventory is lost and ammo drops to survival rations.
 func _die() -> void:
 	health = MAX_HEALTH
 	stamina = MAX_STAMINA
 	_can_sprint = true
 	velocity = Vector3.ZERO
+	ak_ammo = AK_AMMO_RESPAWN
+	laser_ammo = LASER_AMMO_RESPAWN
+	_update_weapon_ui()
 	Inventory.clear()
 	if spawn_position != Vector3.ZERO:
 		global_position = spawn_position
@@ -335,7 +368,10 @@ func _owns_laser() -> bool:
 
 
 func _update_weapon_ui() -> void:
-	fire_mode_label.text = "AK — BURST x3" if weapon == Weapon.AK else "LASER PISTOL"
+	if weapon == Weapon.AK:
+		fire_mode_label.text = "AK — BURST x3 — AMMO %d" % ak_ammo
+	else:
+		fire_mode_label.text = "LASER PISTOL — CELLS %d" % laser_ammo
 	_update_viewmodels()
 
 

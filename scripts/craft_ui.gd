@@ -18,12 +18,27 @@ const RECIPES := [
 		"chance": 0.75,
 		"type": "soin",
 	},
+	{
+		"nom": "AK rounds x30",
+		"compos": {"res_metal": 2, "res_powder": 1},
+		"chance": 0.8,
+		"type": "ammo_ak",
+	},
+	{
+		"nom": "Laser cells x5",
+		"compos": {"res_metal": 1, "res_cell": 2},
+		"chance": 0.75,
+		"type": "ammo_laser",
+	},
 ]
 const COMPO_NAMES := {
 	"compo_canon": "Barrel",
 	"compo_mecanisme": "Mechanism",
 	"compo_chassis": "Frame",
 	"compo_medical": "Medical comp.",
+	"res_metal": "Scrap",
+	"res_powder": "Powder",
+	"res_cell": "E-core",
 }
 # Probabilities for slot count 0..5 (5-slot weapons are rare)
 const SLOT_WEIGHTS := [10, 25, 25, 20, 15, 5]
@@ -107,6 +122,16 @@ func _on_gear_pressed() -> void:
 				Inventory.add_item("laser_slots_%d" % slots)
 				result_label.text = "Success! Laser pistol [%d slot%s] — press 2 to equip" \
 						% [slots, "s" if slots > 1 else ""]
+			"ammo_ak":
+				var player := get_tree().get_first_node_in_group("player")
+				if player:
+					player.add_ammo("ak", 30)
+				result_label.text = "Success! 30 AK rounds added"
+			"ammo_laser":
+				var player2 := get_tree().get_first_node_in_group("player")
+				if player2:
+					player2.add_ammo("laser", 5)
+				result_label.text = "Success! 5 laser cells added"
 			"soin":
 				var roll := randf()
 				var id := "medkit_petit"
