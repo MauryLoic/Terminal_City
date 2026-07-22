@@ -223,7 +223,7 @@ func _physics_process(delta: float) -> void:
 	var aimed: Node3D = null
 	if ray.is_colliding():
 		var c := ray.get_collider()
-		if c is Node3D and c.is_in_group("bat"):
+		if c is Node3D and c.is_in_group("mob"):
 			aimed = c
 	# Progressive lock: keeping aim on the same target tightens the
 	# reticle and the spread. Leaving the target makes the lock decay

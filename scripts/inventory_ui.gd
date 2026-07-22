@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Inventory grid (I key).
+## Inventory grid (I or Escape to close).
 ## - Left click on a medkit: use it
 ## - Right click on any item: drop one (junk included)
 ## - Gear wheel button: open the crafting window
@@ -124,15 +124,26 @@ func _on_craft_pressed() -> void:
 		craft.open()
 
 
+## Close the inventory (and the crafting window with it), back to game.
+func close() -> void:
+	$Center.visible = false
+	var craft := get_tree().get_first_node_in_group("craft_ui")
+	if craft and craft.is_open():
+		craft.close()
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_I:
-		$Center.visible = not $Center.visible
 		if $Center.visible:
-			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+			close()
 		else:
-			# Also close the crafting window, then recapture the mouse
-			var craft := get_tree().get_first_node_in_group("craft_ui")
-			if craft and craft.is_open():
-				craft.close()
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			$Center.visible = true
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	# Escape also closes the whole inventory (handled before the
+	# player's mouse-release toggle thanks to unhandled-input ordering)
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.physical_keycode == KEY_ESCAPE and $Center.visible:
+		close()
+		get_viewport().set_input_as_handled()

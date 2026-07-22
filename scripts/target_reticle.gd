@@ -27,15 +27,20 @@ func _draw() -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	var center: Vector3 = target.global_position
+	# Bracket center and world size come from per-mob metadata, so the
+	# brackets fit a tall warbot as well as a tiny ground ant
+	var center: Vector3 = target.global_position \
+			+ Vector3(0, float(target.get_meta("aim_center", 0.0)), 0)
 	if cam.is_position_behind(center):
 		return
 
 	# Screen size: project camera-aligned world extents,
 	# so the rectangle naturally grows when the target is close.
 	var p_c := cam.unproject_position(center)
-	var p_r := cam.unproject_position(center + cam.global_transform.basis.x * EXTENT_RIGHT)
-	var p_u := cam.unproject_position(center + cam.global_transform.basis.y * EXTENT_UP)
+	var ext_r := float(target.get_meta("aim_half_w", EXTENT_RIGHT))
+	var ext_u := float(target.get_meta("aim_half_h", EXTENT_UP))
+	var p_r := cam.unproject_position(center + cam.global_transform.basis.x * ext_r)
+	var p_u := cam.unproject_position(center + cam.global_transform.basis.y * ext_u)
 	var half_w := maxf(absf(p_r.x - p_c.x), 18.0)
 	var half_h := maxf(absf(p_u.y - p_c.y), 14.0)
 	# The brackets start wide and tighten onto the target as the lock builds

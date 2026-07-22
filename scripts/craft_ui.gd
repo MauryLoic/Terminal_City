@@ -87,6 +87,15 @@ func is_open() -> bool:
 	return $Center.visible
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	# Escape closes the crafting window first (a second Escape then
+	# closes the inventory behind it)
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.physical_keycode == KEY_ESCAPE and is_open():
+		close()
+		get_viewport().set_input_as_handled()
+
+
 func _on_recipe_selected(i: int) -> void:
 	_selected = i
 	_refresh()
