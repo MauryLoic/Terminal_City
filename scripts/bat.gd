@@ -33,6 +33,7 @@ func _ready() -> void:
 	add_to_group("bat")
 	set_meta("mat", "flesh")
 	set_meta("hp", 5.0)
+	set_meta("hp_max", 5.0)
 	set_meta("debris_color", Color(0.25, 0.18, 0.16))
 	set_meta("debris_count", 8)
 	set_meta("debris_size", 0.1)

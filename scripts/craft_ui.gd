@@ -7,7 +7,7 @@ extends CanvasLayer
 
 const RECIPES := [
 	{
-		"nom": "AK-47 artisanale",
+		"nom": "Pistolet laser artisanal",
 		"compos": {"compo_canon": 1, "compo_mecanisme": 1, "compo_chassis": 1},
 		"chance": 0.65,
 		"type": "arme",
@@ -104,8 +104,8 @@ func _on_gear_pressed() -> void:
 		match r.type:
 			"arme":
 				var slots := _weighted(SLOT_WEIGHTS)
-				Inventory.add_item("ak_slots_%d" % slots)
-				result_label.text = "Réussite ! AK-47 artisanale [%d slot%s]" \
+				Inventory.add_item("laser_slots_%d" % slots)
+				result_label.text = "Réussite ! Pistolet laser [%d slot%s] — touche 2 pour l'équiper" \
 						% [slots, "s" if slots > 1 else ""]
 			"soin":
 				var roll := randf()

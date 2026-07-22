@@ -7,6 +7,7 @@ var _explosion: AudioStreamWAV
 var _gunshot: AudioStreamWAV
 var _acid: AudioStreamWAV
 var _click: AudioStreamWAV
+var _laser: AudioStreamWAV
 
 
 func _ready() -> void:
@@ -14,6 +15,12 @@ func _ready() -> void:
 	_gunshot = _make_gunshot()
 	_acid = _make_acid()
 	_click = _make_click()
+	_laser = _make_laser()
+
+
+## Tir laser : zap descendant + bourdonnement du rayon qui persiste.
+func play_laser(pos: Vector3) -> void:
+	_play_at(_laser, pos, 12.0, true)
 
 
 ## Clic mécanique (sélecteur de tir) : non positionnel, joué "dans
@@ -156,6 +163,34 @@ func _make_click() -> AudioStreamWAV:
 			s += sin(TAU * 1700.0 * (t - 0.025)) * exp(-(t - 0.025) * 380.0) * 0.55
 		s += rng.randf_range(-1.0, 1.0) * exp(-t * 400.0) * 0.25
 		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 28000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+
+func _make_laser() -> AudioStreamWAV:
+	var rate := 22050
+	var dur := 0.8
+	var n := int(rate * dur)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var phase := 0.0
+	var phase2 := 0.0
+	for i in n:
+		var t := float(i) / rate
+		# Zap : balayage rapide vers le grave, onde carrée adoucie
+		var f1 := 250.0 + 1150.0 * exp(-t * 14.0)
+		phase += TAU * f1 / rate
+		var zap := (signf(sin(phase)) * 0.5 + sin(phase) * 0.3) * exp(-t * 7.0)
+		# Bourdonnement du rayon : basse fréquence vibrée, tenue puis fondue
+		var f2 := 160.0 * (1.0 + 0.06 * sin(t * 55.0))
+		phase2 += TAU * f2 / rate
+		var hum := sin(phase2) * 0.35 * clampf(t * 30.0, 0.0, 1.0) * exp(-t * 4.0)
+		var s := zap * 0.7 + hum
+		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 30000.0))
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = rate

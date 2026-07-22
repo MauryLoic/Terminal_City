@@ -1,9 +1,11 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ak47.tscn" id="2_ak"]
 [ext_resource type="PackedScene" path="res://scenes/private_eye.tscn" id="3_monk"]
 [ext_resource type="Script" path="res://scripts/target_reticle.gd" id="4_reticle"]
+[ext_resource type="Script" path="res://scripts/laser_pistol.gd" id="5_laser"]
+[ext_resource type="Script" path="res://scripts/mob_health_bars.gd" id="6_mobbars"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -48,6 +50,11 @@ target_position = Vector3(0, 0, -100)
 
 [node name="Gun" parent="Camera3D" instance=ExtResource("2_ak")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.22, -0.35)
+
+[node name="LaserGun" type="Node3D" parent="Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, -0.2, -0.4)
+visible = false
+script = ExtResource("5_laser")
 
 [node name="SpringArm3D" type="SpringArm3D" parent="Camera3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0.3, 0)
@@ -112,4 +119,10 @@ offset_left = 16.0
 offset_top = -92.0
 offset_right = 250.0
 offset_bottom = -70.0
-text = "RAFALE x3"
+text = "AK — RAFALE x3"
+
+[node name="MobBars" type="Control" parent="HUD"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("6_mobbars")

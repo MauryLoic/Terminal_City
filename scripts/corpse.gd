@@ -14,7 +14,7 @@ const LOOT_TABLE := [
 	["junk", 20],
 ]
 const LOOT_RANGE := 2.6
-const LIFE_UNLOOTED := 15.0
+const LIFE_UNLOOTED := 60.0
 const LIFE_AFTER_LOOT := 5.0
 
 var loot := {}

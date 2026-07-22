@@ -17,6 +17,8 @@ const ITEM_DEFS := {
 	"medkit_grand": {"short": "Soin L", "label": "Trousse de soin L (+60 PV)", "heal": 60.0},
 }
 
+const DroppedItemScript := preload("res://scripts/dropped_item.gd")
+
 @onready var grid: GridContainer = $Center/Panel/VBox/Grid
 
 var _slots: Array[Button] = []
@@ -52,6 +54,12 @@ func _item_def(id: String) -> Dictionary:
 			"short": "AK [%d]" % n,
 			"label": "AK-47 artisanale — %d slot%s d'amélioration" % [n, "s" if n > 1 else ""],
 		}
+	if id.begins_with("laser_slots_"):
+		var n := int(id.trim_prefix("laser_slots_"))
+		return {
+			"short": "Laser [%d]" % n,
+			"label": "Pistolet laser artisanal — %d slot%s d'amélioration (touche 2 pour l'équiper)" % [n, "s" if n > 1 else ""],
+		}
 	return {"short": id, "label": id}
 
 
@@ -84,13 +92,26 @@ func _on_slot_pressed(i: int) -> void:
 			player.heal(d.heal)
 
 
-## Clic droit : jeter une unité de l'objet (junk ou autre).
+## Clic droit : jeter une unité de l'objet — elle apparaît au sol devant
+## le joueur, reste 30 s (re-ramassable) puis disparaît.
 func _on_slot_gui_input(event: InputEvent, i: int) -> void:
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_RIGHT:
 		var ids := Inventory.items.keys()
-		if i < ids.size():
-			Inventory.remove_item(ids[i])
+		if i < ids.size() and Inventory.remove_item(ids[i]):
+			_spawn_drop(ids[i])
+
+
+func _spawn_drop(id: String) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return
+	var drop := Area3D.new()
+	drop.set_script(DroppedItemScript)
+	drop.item_id = id
+	drop.position = player.global_position \
+			- player.global_transform.basis.z * 1.3 + Vector3(0, 0.5, 0)
+	get_tree().current_scene.add_child(drop)
 
 
 func _on_craft_pressed() -> void:

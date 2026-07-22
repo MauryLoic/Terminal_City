@@ -3,8 +3,7 @@ extends Node3D
 ## (le raycast a déjà déterminé la cible), puis déclenche l'effet d'impact.
 
 const SPEED := 70.0
-const ImpactScript := preload("res://scripts/impact.gd")
-const DebrisScript := preload("res://scripts/debris.gd")
+const HitEffects := preload("res://scripts/hit_effects.gd")
 
 var damage := 1.0   # dégâts de cette balle (réduits sans lock de visée)
 
@@ -62,48 +61,12 @@ func _process(delta: float) -> void:
 
 
 func _on_arrive() -> void:
-	# Impact réel uniquement si le raycast avait touché quelque chose
+	# Impact réel uniquement si le raycast avait touché quelque chose.
+	# L'objet visé a pu être détruit pendant le vol de la balle : une
+	# référence libérée ne passe pas le contrôle de type de resolve(),
+	# on la remplace donc par null AVANT l'appel.
 	if _normal != Vector3.ZERO:
-		var mat_type := "dirt"
-		if is_instance_valid(_collider):
-			# Matériau de l'objet (défini par world_gen) -> visuel d'impact
-			if _collider.has_meta("mat"):
-				mat_type = _collider.get_meta("mat")
-			# Poussée physique : la vitesse résultante dépend de la masse
-			if _collider is RigidBody3D:
-				_collider.apply_central_impulse(_impulse)
-			# Dégâts : les objets avec des PV finissent par être détruits
-			if _collider.has_meta("hp"):
-				if _collider.has_method("on_hit"):
-					_collider.on_hit()
-				var hp: float = _collider.get_meta("hp") - damage
-				if hp <= 0.0:
-					_destroy(_collider)
-				else:
-					_collider.set_meta("hp", hp)
-
-		var impact := ImpactScript.new()
-		impact.setup(_target, _normal, mat_type)
-		# Attacher l'impact au corps touché pour que la marque suive les objets
-		var parent: Node = get_tree().current_scene
-		if is_instance_valid(_collider) and _collider is Node3D \
-				and not _collider.is_queued_for_deletion():
-			parent = _collider
-		parent.add_child(impact)
+		if not is_instance_valid(_collider):
+			_collider = null
+		HitEffects.resolve(self, _collider, _target, _normal, damage, _impulse)
 	queue_free()
-
-
-## Destruction : gerbe de fragments de la couleur de l'objet, puis
-## suppression de l'objet.
-func _destroy(obj: Node3D) -> void:
-	var debris := DebrisScript.new()
-	debris.color = obj.get_meta("debris_color", Color(0.5, 0.4, 0.3))
-	debris.count = int(obj.get_meta("debris_count", 8))
-	debris.piece_size = float(obj.get_meta("debris_size", 0.15))
-	debris.position = obj.global_position
-	get_tree().current_scene.add_child(debris)
-	Sfx.play_explosion(obj.global_position)
-	# Hook pour les objets à logique de mort (loot, signal de respawn...)
-	if obj.has_method("on_destroyed"):
-		obj.on_destroyed()
-	obj.queue_free()

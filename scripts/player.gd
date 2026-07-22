@@ -23,7 +23,11 @@ const STAMINA_SPRINT_AGAIN := 15.0 # seuil pour re-sprinter après épuisement
 const POISON_DPS := 6.0            # dégâts/s dans l'eau toxique
 const WATER_LEVEL := -1.1
 
+const LASER_DAMAGE := 3.0     # dégâts du rayon (= 3 balles lockées)
+const LASER_COOLDOWN := 3.0   # le rayon reste visible 3 s avant le tir suivant
+
 const BulletScript := preload("res://scripts/bullet.gd")
+const LaserBeamScript := preload("res://scripts/laser_beam.gd")
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
@@ -35,6 +39,8 @@ const BulletScript := preload("res://scripts/bullet.gd")
 @onready var health_bar: ProgressBar = $HUD/Bars/HealthBar
 @onready var stamina_bar: ProgressBar = $HUD/Bars/StaminaBar
 @onready var reticle: Control = $HUD/Reticle
+@onready var fire_mode_label: Label = $HUD/FireMode
+@onready var laser_gun: Node3D = $Camera3D/LaserGun
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
@@ -45,6 +51,10 @@ var crouching := false
 var _crouch_toggled := false
 var _can_sprint := true
 var _fire_cd := 0.0
+enum Weapon { AK, LASER }
+
+var weapon: int = Weapon.AK
+var _laser_cd := 0.0
 var _burst_left := 0
 var _prev_fire_pressed := false
 var _lock := 0.0                 # progression du lock de visée (0..1)
@@ -56,6 +66,7 @@ func _ready() -> void:
 	ray.add_exception(self)
 	spring_arm.add_excluded_object(get_rid())
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	_update_weapon_ui()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -74,6 +85,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_C:
 		_crouch_toggled = not _crouch_toggled
+
+	# 1 / 2 : changement d'arme (le laser doit avoir été construit)
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_1 and weapon != Weapon.AK:
+			weapon = Weapon.AK
+			Sfx.play_click()
+			_update_weapon_ui()
+		elif event.physical_keycode == KEY_2 and weapon != Weapon.LASER:
+			if _owns_laser():
+				weapon = Weapon.LASER
+				Sfx.play_click()
+				_update_weapon_ui()
+			else:
+				fire_mode_label.text = "LASER : à construire d'abord"
 
 
 	# Echap : libérer / recapturer la souris
@@ -176,17 +201,23 @@ func _physics_process(delta: float) -> void:
 	reticle.target = aimed
 	reticle.lock_ratio = _lock
 
-	# Tir : uniquement par rafales de 3 balles (un clic = une rafale)
+	# Tir : AK en rafales de 3, ou laser (un rayon puis 3 s d'attente)
 	_fire_cd = maxf(_fire_cd - delta, 0.0)
+	_laser_cd = maxf(_laser_cd - delta, 0.0)
 	var fire_pressed := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
 			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
-	if fire_pressed and not _prev_fire_pressed \
-			and _burst_left == 0 and _fire_cd == 0.0:
-		_burst_left = 3
-	if _burst_left > 0 and _fire_cd == 0.0:
-		_burst_left -= 1
-		_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
-		_shoot()
+	if weapon == Weapon.AK:
+		if fire_pressed and not _prev_fire_pressed \
+				and _burst_left == 0 and _fire_cd == 0.0:
+			_burst_left = 3
+		if _burst_left > 0 and _fire_cd == 0.0:
+			_burst_left -= 1
+			_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
+			_shoot()
+	else:
+		if fire_pressed and not _prev_fire_pressed and _laser_cd == 0.0:
+			_laser_cd = LASER_COOLDOWN
+			_shoot_laser()
 	_prev_fire_pressed = fire_pressed
 
 
@@ -240,7 +271,7 @@ func _shoot() -> void:
 func _toggle_view() -> void:
 	third_person = not third_person
 	visual.visible = third_person
-	fp_gun.visible = not third_person
+	_update_viewmodels()
 	if third_person:
 		tp_camera.make_current()
 	else:
@@ -269,3 +300,49 @@ func _die() -> void:
 	Inventory.clear()
 	if spawn_position != Vector3.ZERO:
 		global_position = spawn_position
+
+
+## --- Système d'armes ---
+
+func _owns_laser() -> bool:
+	for id in Inventory.items:
+		if String(id).begins_with("laser_slots_"):
+			return true
+	return false
+
+
+func _update_weapon_ui() -> void:
+	fire_mode_label.text = "AK — RAFALE x3" if weapon == Weapon.AK else "PISTOLET LASER"
+	_update_viewmodels()
+
+
+func _update_viewmodels() -> void:
+	fp_gun.visible = not third_person and weapon == Weapon.AK
+	laser_gun.visible = not third_person and weapon == Weapon.LASER
+
+
+## Tir laser : rayon hitscan précis, gros dégâts, visible 3 secondes.
+func _shoot_laser() -> void:
+	var muzzle: Vector3 = camera.global_transform * Vector3(0.22, -0.2, -0.78)
+	var spread := lerpf(0.02, 0.001, _lock)
+	var ang := randf_range(0.0, TAU)
+	var dev := randf() * spread
+	var b := camera.global_transform.basis
+	var aim_dir := (-b.z + b.x * cos(ang) * dev + b.y * sin(ang) * dev).normalized()
+
+	Sfx.play_laser(muzzle)
+	Net.send_shoot(muzzle, aim_dir)
+
+	var from: Vector3 = camera.global_position
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, from + aim_dir * 120.0)
+	query.exclude = [get_rid()]
+	var hit := space.intersect_ray(query)
+
+	var beam := LaserBeamScript.new()
+	if hit:
+		beam.setup(muzzle, hit.position, hit.normal, hit.collider,
+				LASER_DAMAGE * lerpf(0.5, 1.0, _lock))
+	else:
+		beam.setup(muzzle, from + aim_dir * 120.0, Vector3.ZERO, null, 0.0)
+	get_tree().current_scene.add_child(beam)
