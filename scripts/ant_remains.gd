@@ -5,11 +5,11 @@ extends "res://scripts/remains_base.gd"
 
 func _init() -> void:
 	loot_table = [
-		["compo_medical", 45],
-		["compo_organic", 45],
-		["junk", 10],
+		["compo_medical", 48],
+		["compo_organic", 48],
+		["junk", 4],
 	]
-	rolls = 1
+	rolls = 2
 	label_height = 0.6
 
 

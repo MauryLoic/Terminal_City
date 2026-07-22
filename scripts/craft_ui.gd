@@ -15,7 +15,7 @@ const RECIPES := [
 	{
 		"nom": "Medkit",
 		"compos": {"compo_medical": 1, "compo_organic": 1},
-		"chance": 0.75,
+		"chance": 0.9,
 		"type": "soin",
 	},
 	{
@@ -155,13 +155,13 @@ func _on_gear_pressed() -> void:
 			"soin":
 				var roll := randf()
 				var id := "medkit_petit"
-				var taille := "S (+25 HP)"
-				if roll > 0.85:
+				var taille := "S (+40 HP)"
+				if roll > 0.75:
 					id = "medkit_grand"
-					taille = "L (+60 HP)"
-				elif roll > 0.5:
+					taille = "L (+80 HP)"
+				elif roll > 0.35:
 					id = "medkit_moyen"
-					taille = "M (+40 HP)"
+					taille = "M (+60 HP)"
 				Inventory.add_item(id)
 				result_label.text = "Success! Medkit %s" % taille
 	else:

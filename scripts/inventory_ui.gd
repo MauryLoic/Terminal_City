@@ -18,9 +18,9 @@ const ITEM_DEFS := {
 	"saber": {"short": "Saber", "label": "Laser saber — your melee weapon (key 3)"},
 	"junk": {"short": "Junk", "label": "Worthless scrap (right click: drop)"},
 	"medkit": {"short": "Med", "label": "Medkit (+40 HP)", "heal": 40.0},
-	"medkit_petit": {"short": "Med S", "label": "Medkit S (+25 HP)", "heal": 25.0},
-	"medkit_moyen": {"short": "Med M", "label": "Medkit M (+40 HP)", "heal": 40.0},
-	"medkit_grand": {"short": "Med L", "label": "Medkit L (+60 HP)", "heal": 60.0},
+	"medkit_petit": {"short": "Med S", "label": "Medkit S (+40 HP)", "heal": 40.0},
+	"medkit_moyen": {"short": "Med M", "label": "Medkit M (+60 HP)", "heal": 60.0},
+	"medkit_grand": {"short": "Med L", "label": "Medkit L (+80 HP)", "heal": 80.0},
 }
 
 const DroppedItemScript := preload("res://scripts/dropped_item.gd")
