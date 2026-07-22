@@ -1,7 +1,7 @@
 extends Area3D
-## Objet jeté de l'inventaire : posé au sol devant le joueur, il reste
-## 30 secondes puis disparaît. Re-ramassable en marchant dessus, après
-## un court délai (sinon on le reprendrait instantanément en le jetant).
+## Item dropped from the inventory: placed on the ground in front of the
+## 30 seconds then disappears. Can be picked back up by walking over it,
+## after a short delay (otherwise you'd grab it right back when dropping).
 
 const LIFETIME := 30.0
 const PICKUP_DELAY := 1.5
@@ -33,7 +33,7 @@ func _ready() -> void:
 	mi.mesh = bm
 	add_child(mi)
 
-	# Nom de l'objet flottant au-dessus (récupéré depuis l'inventaire)
+	# Item name floating above (fetched from the inventory)
 	var label := Label3D.new()
 	var inv := get_tree().get_first_node_in_group("inventory_ui")
 	label.text = str(inv._item_def(item_id).get("short", item_id)) if inv else item_id

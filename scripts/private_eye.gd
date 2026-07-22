@@ -1,8 +1,8 @@
 extends Node3D
-## Personnage style Private Eye : long imperméable, plastron blindé,
-## lunettes noires et fedora — le détective urbain de Neocron.
-## Avant du personnage : -Z. Tient une AK-47 (avec son Marker3D "Muzzle").
-## Sert de modèle au joueur local (3e personne) et aux joueurs distants.
+## Private Eye-style character: long trench coat, armored chest plate,
+## dark glasses and fedora — Neocron's urban detective.
+## Character faces -Z. Holds an AK-47 (with its "Muzzle" Marker3D).
+## Used as the model for the local player (third person) and remote players.
 
 
 func _ready() -> void:
@@ -15,36 +15,36 @@ func _ready() -> void:
 	armor.metallic = 0.5
 	armor.roughness = 0.4
 
-	# Jambes et bottes (visibles sous l'imperméable)
+	# Legs and boots (visible under the trench coat)
 	for side in [-1.0, 1.0]:
 		_cyl(pants, 0.09, 0.1, 0.8, Vector3(side * 0.13, 0.45, 0))
 		_box(dark, Vector3(0.15, 0.12, 0.3), Vector3(side * 0.13, 0.06, -0.04))
 
-	# Imperméable évasé, du torse aux genoux
+	# Flared trench coat, from torso to knees
 	_cyl(coat, 0.27, 0.37, 0.95, Vector3(0, 1.08, 0))
-	# Torse (haut du manteau)
+	# Torso (upper coat)
 	_cyl(coat, 0.28, 0.28, 0.5, Vector3(0, 1.5, 0))
-	# Plastron blindé sur la poitrine
+	# Armored chest plate
 	_box(armor, Vector3(0.34, 0.3, 0.08), Vector3(0, 1.47, -0.2))
-	# Ceinture
+	# Belt
 	_cyl(coat_dark, 0.29, 0.29, 0.08, Vector3(0, 1.24, 0))
-	# Épaules
+	# Shoulders
 	_sphere(coat_dark, 0.12, Vector3(0.3, 1.7, 0))
 	_sphere(coat_dark, 0.12, Vector3(-0.3, 1.7, 0))
-	# Bras tendus vers l'avant, vers l'arme (manches du manteau)
+	# Arms stretched forward, toward the weapon (coat sleeves)
 	_arm(coat, Vector3(0.3, 1.7, 0), 1.15, 0.3)
 	_arm(coat, Vector3(-0.3, 1.7, 0), 1.05, -0.3)
-	# Mains
+	# Hands
 	_sphere(skin, 0.06, Vector3(0.24, 1.31, -0.33))
 	_sphere(skin, 0.06, Vector3(0.05, 1.33, -0.5))
 
-	# Tête, lunettes noires, fedora
+	# Head, dark glasses, fedora
 	_sphere(skin, 0.135, Vector3(0, 1.88, -0.02))
 	_box(dark, Vector3(0.2, 0.055, 0.08), Vector3(0, 1.9, -0.11))
 	_cyl(coat_dark, 0.2, 0.2, 0.04, Vector3(0, 1.99, 0))
 	_cyl(coat_dark, 0.12, 0.13, 0.12, Vector3(0, 2.06, 0))
 
-	# AK-47 tenue devant
+	# AK-47 held in front
 	var ak := preload("res://scenes/ak47.tscn").instantiate()
 	ak.name = "AK47"
 	ak.position = Vector3(0.22, 1.33, -0.32)
@@ -93,8 +93,8 @@ func _cyl(mat: StandardMaterial3D, top: float, bottom: float, height: float, pos
 	add_child(mi)
 
 
-## Bras : pivot à l'épaule, cylindre orienté vers le bas puis basculé
-## vers l'avant (pitch) et vers le centre (yaw) pour rejoindre l'arme.
+## Arm: pivot at the shoulder, cylinder pointing down then tilted
+## forward (pitch) and toward the center (yaw) to reach the weapon.
 func _arm(mat: StandardMaterial3D, shoulder: Vector3, pitch: float, yaw: float) -> void:
 	var pivot := Node3D.new()
 	pivot.position = shoulder

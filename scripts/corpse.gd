@@ -1,10 +1,10 @@
 extends RigidBody3D
-## Corps d'une chauve-souris abattue : tombe du ciel avec la physique,
-## reste au sol et peut être looté (touche E à proximité).
-## - Non looté : disparaît après 15 s.
-## - Looté : le corps vide reste encore 5 s puis disparaît.
-## Le loot contient des composants (arme, médical) ou du junk,
-## jamais d'objets finis.
+## Corpse of a downed bat: falls from the sky with physics,
+## stays on the ground and can be looted (E key when close).
+## - Not looted: vanishes after 60 s.
+## - Looted: the empty corpse remains 5 more seconds then vanishes.
+## Loot contains components (weapon, medical) or junk,
+## never finished items.
 
 const LOOT_TABLE := [
 	["compo_canon", 18],
@@ -32,7 +32,7 @@ func _ready() -> void:
 	cs.shape = sp
 	add_child(cs)
 
-	# Génération du loot : 1 ou 2 tirages pondérés
+	# Loot generation: 1 or 2 weighted rolls
 	var rolls := 1 + (1 if randf() < 0.5 else 0)
 	for i in rolls:
 		var id := _weighted_pick()
@@ -88,7 +88,7 @@ func _weighted_pick() -> String:
 	return "junk"
 
 
-## Modèle : la bête inerte, ailes affaissées.
+## Model: the lifeless beast, wings slumped.
 func _build_model() -> void:
 	var fur := StandardMaterial3D.new()
 	fur.albedo_color = Color(0.2, 0.15, 0.13)

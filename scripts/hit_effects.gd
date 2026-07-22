@@ -1,16 +1,16 @@
 extends Object
-## Résolution commune des impacts d'armes (balles ET rayons laser) :
-## matériau -> visuel d'impact, poussée physique, dégâts, destruction.
-## Utilisé par bullet.gd et laser_beam.gd pour ne pas dupliquer la logique.
+## Shared weapon impact resolution (bullets AND laser beams):
+## material -> impact visual, physical push, damage, destruction.
+## Used by bullet.gd and laser_beam.gd to avoid duplicating the logic.
 
 const ImpactScript := preload("res://scripts/impact.gd")
 const DebrisScript := preload("res://scripts/debris.gd")
 
 
 static func resolve(ctx: Node, collider: Object, point: Vector3, normal: Vector3, damage: float, impulse: Vector3) -> void:
-	# Un objet queue_free() reste "valide" jusqu'à la fin de la frame :
-	# sans ce test, deux balles d'une même rafale peuvent détruire deux
-	# fois le même objet (double corps, double signal de respawn...).
+	# A queue_free() object stays "valid" until the end of the frame:
+	# without this check, two bullets of the same burst can destroy
+	# the same object twice (double corpse, double respawn signal...).
 	var alive := is_instance_valid(collider) \
 			and not (collider is Node and collider.is_queued_for_deletion())
 	var mat_type := "dirt"

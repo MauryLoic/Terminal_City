@@ -1,7 +1,7 @@
 extends Node
-## Autoload "Sfx" — sons synthétisés procéduralement (aucun fichier
-## audio : les échantillons WAV sont générés en code au démarrage).
-## Joués en 3D positionnel, atténués avec la distance.
+## "Sfx" autoload — procedurally synthesized sounds (no audio
+## files: the WAV samples are generated in code at startup).
+## Played as positional 3D, attenuated with distance.
 
 var _explosion: AudioStreamWAV
 var _gunshot: AudioStreamWAV
@@ -18,13 +18,13 @@ func _ready() -> void:
 	_laser = _make_laser()
 
 
-## Tir laser : zap descendant + bourdonnement du rayon qui persiste.
+## Laser shot: descending zap + lingering beam hum.
 func play_laser(pos: Vector3) -> void:
 	_play_at(_laser, pos, 12.0, true)
 
 
-## Clic mécanique (sélecteur de tir) : non positionnel, joué "dans
-## l'oreille" du joueur.
+## Mechanical click (fire selector): non-positional, played "in
+## the player's ear".
 func play_click() -> void:
 	var p := AudioStreamPlayer.new()
 	p.stream = _click
@@ -34,18 +34,18 @@ func play_click() -> void:
 	p.play()
 
 
-## Explosion / destruction : bruit sec + thump grave descendant.
+## Explosion / destruction: sharp noise + descending low thump.
 func play_explosion(pos: Vector3) -> void:
 	_play_at(_explosion, pos, 14.0)
 
 
-## Coup de feu : claquement bref. Joué à chaque balle, la cadence de
-## 9/s + la variation de pitch aléatoire donnent le son de mitraillette.
+## Gunshot: short crack. Played for every bullet; the rate of
+## 9/s plus random pitch variation produce the machine-gun sound.
 func play_gunshot(pos: Vector3) -> void:
 	_play_at(_gunshot, pos, 10.0, true)
 
 
-## Crachat d'acide : "gloub" humide descendant avec vibrato.
+## Acid spit: wet descending "gloop" with vibrato.
 func play_acid(pos: Vector3) -> void:
 	_play_at(_acid, pos, 10.0, true)
 
@@ -76,10 +76,10 @@ func _make_explosion() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / rate
 		var env := exp(-t * 8.0)
-		# Souffle : bruit blanc adouci (filtre passe-bas grossier)
+		# Blast: softened white noise (crude low-pass filter)
 		var noise := lerpf(prev, rng.randf_range(-1.0, 1.0), 0.35)
 		prev = noise
-		# Thump grave dont la fréquence chute
+		# Low thump whose frequency drops
 		var freq := 140.0 * exp(-t * 3.5) + 40.0
 		phase += TAU * freq / rate
 		var s := (noise * 0.5 + sin(phase) * 0.7) * env
@@ -105,7 +105,7 @@ func _make_gunshot() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / rate
 		var env := exp(-t * 42.0)
-		# Claquement : bruit vif (peu filtré) + punch grave court
+		# Crack: sharp noise (lightly filtered) + short low punch
 		var noise := lerpf(prev, rng.randf_range(-1.0, 1.0), 0.6)
 		prev = noise
 		var freq := 230.0 * exp(-t * 20.0) + 60.0
@@ -131,9 +131,9 @@ func _make_acid() -> AudioStreamWAV:
 	var phase := 0.0
 	for i in n:
 		var t := float(i) / rate
-		# Attaque rapide puis décroissance : enveloppe "crachat"
+		# Fast attack then decay: "spit" envelope
 		var env := (1.0 - exp(-t * 90.0)) * exp(-t * 9.0)
-		# Sifflement humide : glissando descendant avec vibrato
+		# Wet hiss: descending glissando with vibrato
 		var freq := 160.0 + 560.0 * exp(-t * 9.0)
 		freq *= 1.0 + 0.14 * sin(t * 70.0)
 		phase += TAU * freq / rate
@@ -157,7 +157,7 @@ func _make_click() -> AudioStreamWAV:
 	rng.seed = 21
 	for i in n:
 		var t := float(i) / rate
-		# Deux impulsions très brèves : le "clic-clac" d'un sélecteur
+		# Two very short impulses: the "click-clack" of a selector
 		var s := sin(TAU * 2400.0 * t) * exp(-t * 320.0) * 0.8
 		if t > 0.025:
 			s += sin(TAU * 1700.0 * (t - 0.025)) * exp(-(t - 0.025) * 380.0) * 0.55
@@ -181,11 +181,11 @@ func _make_laser() -> AudioStreamWAV:
 	var phase2 := 0.0
 	for i in n:
 		var t := float(i) / rate
-		# Zap : balayage rapide vers le grave, onde carrée adoucie
+		# Zap: fast downward sweep, softened square wave
 		var f1 := 250.0 + 1150.0 * exp(-t * 14.0)
 		phase += TAU * f1 / rate
 		var zap := (signf(sin(phase)) * 0.5 + sin(phase) * 0.3) * exp(-t * 7.0)
-		# Bourdonnement du rayon : basse fréquence vibrée, tenue puis fondue
+		# Beam hum: vibrated low frequency, sustained then faded
 		var f2 := 160.0 * (1.0 + 0.06 * sin(t * 55.0))
 		phase2 += TAU * f2 / rate
 		var hum := sin(phase2) * 0.35 * clampf(t * 30.0, 0.0, 1.0) * exp(-t * 4.0)

@@ -1,6 +1,6 @@
 extends Node3D
-## Effet de destruction : une gerbe de fragments physiques (RigidBody3D)
-## de la couleur de l'objet détruit, qui retombent puis disparaissent.
+## Destruction effect: a burst of physical fragments (RigidBody3D)
+## in the destroyed object's color, which fall down then disappear.
 
 var color := Color(0.5, 0.4, 0.3)
 var count := 8

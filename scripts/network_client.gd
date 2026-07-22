@@ -1,13 +1,13 @@
 extends Node
-## Autoload "Net" — client réseau UDP.
-## Protocole JSON documenté dans PROTOCOL.md (à implémenter en miroir
-## côté serveur Akka/Pekko IO UDP).
+## "Net" autoload — UDP network client.
+## JSON protocol documented in PROTOCOL.md (to be mirrored
+## on the Akka/Pekko IO UDP server side).
 ##
-## Cycle de vie :
-##   connect_to_server() -> envoie "join" (avec retry, UDP peut perdre
-##   des paquets) -> reçoit "welcome" (id + seed du monde) -> envoie la
-##   position du joueur local à 20 Hz + un ping toutes les 2 s.
-##   Timeout de 6 s sans nouvelles du serveur -> déconnexion.
+## Lifecycle:
+##   connect_to_server() -> sends "join" (with retry, UDP can drop
+##   packets) -> receives "welcome" (id + world seed) -> sends the
+##   local player position at 20 Hz + a ping every 2 s.
+##   A 6 s timeout without news from the server -> disconnect.
 
 signal connected(my_id: int, world_seed: int)
 signal disconnected(reason: String)
@@ -17,19 +17,19 @@ signal state_received(players: Array)
 signal remote_shot(id: int, origin: Vector3, direction: Vector3)
 signal ping_measured(ms: int)
 
-const SEND_HZ := 20.0          # fréquence d'envoi de la position
-const JOIN_RETRY := 1.0        # renvoi du "join" tant que pas de "welcome"
+const SEND_HZ := 20.0          # position send rate
+const JOIN_RETRY := 1.0        # resend "join" until a "welcome" arrives
 const PING_EVERY := 2.0
-const TIMEOUT := 6.0           # silence serveur -> déconnexion
+const TIMEOUT := 6.0           # server silence -> disconnect
 
 var my_id := -1
-var local_player: Node3D = null   # assigné par main.gd
+var local_player: Node3D = null   # assigned by main.gd
 
 var _udp := PacketPeerUDP.new()
 var _active := false
 var _joined := false
 var _player_name := "Runner"
-var _seq := 0                  # numéro de séquence des paquets "pos"
+var _seq := 0                  # sequence number of "pos" packets
 var _send_t := 0.0
 var _join_t := 0.0
 var _ping_t := 0.0
@@ -50,7 +50,7 @@ func connect_to_server(host: String, port: int, player_name: String) -> Error:
 	_joined = false
 	_seq = 0
 	_last_recv = _now()
-	_join_t = JOIN_RETRY   # déclenche l'envoi du join immédiatement
+	_join_t = JOIN_RETRY   # triggers sending the join immediately
 	return OK
 
 
@@ -65,7 +65,7 @@ func disconnect_from_server(silent := false) -> void:
 		disconnected.emit("déconnexion")
 
 
-## Appelé par player.gd à chaque tir (no-op hors ligne).
+## Called by player.gd on every shot (no-op while offline).
 func send_shoot(origin: Vector3, dir: Vector3) -> void:
 	if not is_online():
 		return
@@ -83,7 +83,7 @@ func _process(delta: float) -> void:
 
 	var t := _now()
 
-	# Phase de connexion : renvoyer "join" jusqu'au "welcome"
+	# Connection phase: resend "join" until "welcome"
 	if not _joined:
 		_join_t += delta
 		if _join_t >= JOIN_RETRY:
@@ -96,7 +96,7 @@ func _process(delta: float) -> void:
 			_send_json({"t": "join", "name": _player_name, "v": 1})
 		return
 
-	# Connecté : timeout ?
+	# Connected: timeout?
 	if t - _last_recv > TIMEOUT:
 		_udp.close()
 		_active = false
@@ -105,7 +105,7 @@ func _process(delta: float) -> void:
 		disconnected.emit("timeout serveur")
 		return
 
-	# Position du joueur local à tick fixe
+	# Local player position at a fixed tick
 	_send_t += delta
 	if _send_t >= 1.0 / SEND_HZ and is_instance_valid(local_player):
 		_send_t = 0.0
@@ -121,7 +121,7 @@ func _process(delta: float) -> void:
 			"rx": snappedf(cam.rotation.x, 0.001),
 		})
 
-	# Ping périodique (mesure de latence + keepalive)
+	# Periodic ping (latency measurement + keepalive)
 	_ping_t += delta
 	if _ping_t >= PING_EVERY:
 		_ping_t = 0.0

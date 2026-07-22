@@ -1,6 +1,6 @@
 extends Node
-## Autoload "Inventory" — inventaire du joueur, tout simple :
-## un dictionnaire id -> quantité. Perdu intégralement à la mort.
+## "Inventory" autoload — the player's inventory, kept simple:
+## a dictionary id -> count. Entirely lost on death.
 
 signal changed
 

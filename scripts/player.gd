@@ -1,7 +1,7 @@
 extends CharacterBody3D
-## Contrôleur FPS minimal.
-## Les touches utilisent les keycodes PHYSIQUES : ZQSD fonctionne
-## automatiquement sur un clavier AZERTY (positions WASD).
+## Minimal FPS controller.
+## Keys use PHYSICAL keycodes: ZQSD works
+## automatically on an AZERTY keyboard (WASD positions).
 
 const SPEED := 6.0
 const SPRINT_SPEED := 9.5
@@ -10,21 +10,21 @@ const JUMP_VELOCITY := 4.8
 const GRAVITY := 14.0
 const MOUSE_SENSITIVITY := 0.002
 const SHOOT_FORCE := 10.0
-const FIRE_RATE := 9.0   # balles/seconde en tir maintenu (cadence type AK)
-const LOCK_TIME := 1.2       # secondes de visée maintenue pour le lock complet
-const SPREAD_MAX := 0.075    # dispersion (rad) sans lock (~4.3 deg) : on rate
-const SPREAD_MIN := 0.003    # dispersion au lock complet (~0.17 deg)
+const FIRE_RATE := 9.0   # bullets/second while firing (AK-like rate)
+const LOCK_TIME := 1.2       # seconds of sustained aim for a full lock
+const SPREAD_MAX := 0.075    # spread (rad) without lock (~4.3 deg): you miss
+const SPREAD_MIN := 0.003    # spread at full lock (~0.17 deg)
 
 const MAX_HEALTH := 100.0
 const MAX_STAMINA := 100.0
-const STAMINA_DRAIN := 22.0        # /s en sprint
-const STAMINA_REGEN := 14.0        # /s en marchant ou à l'arrêt
-const STAMINA_SPRINT_AGAIN := 15.0 # seuil pour re-sprinter après épuisement
-const POISON_DPS := 6.0            # dégâts/s dans l'eau toxique
+const STAMINA_DRAIN := 22.0        # /s while sprinting
+const STAMINA_REGEN := 14.0        # /s while walking or standing still
+const STAMINA_SPRINT_AGAIN := 15.0 # threshold to sprint again after exhaustion
+const POISON_DPS := 6.0            # damage/s in toxic water
 const WATER_LEVEL := -1.1
 
-const LASER_DAMAGE := 3.0     # dégâts du rayon (= 3 balles lockées)
-const LASER_COOLDOWN := 3.0   # le rayon reste visible 3 s avant le tir suivant
+const LASER_DAMAGE := 3.0     # beam damage (= 3 locked bullets)
+const LASER_COOLDOWN := 3.0   # the beam stays visible 3 s before the next shot
 
 const BulletScript := preload("res://scripts/bullet.gd")
 const LaserBeamScript := preload("res://scripts/laser_beam.gd")
@@ -44,7 +44,7 @@ const LaserBeamScript := preload("res://scripts/laser_beam.gd")
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
-var spawn_position := Vector3.ZERO   # renseigné par main.gd
+var spawn_position := Vector3.ZERO   # filled in by main.gd
 
 var third_person := false
 var crouching := false
@@ -57,7 +57,7 @@ var weapon: int = Weapon.AK
 var _laser_cd := 0.0
 var _burst_left := 0
 var _prev_fire_pressed := false
-var _lock := 0.0                 # progression du lock de visée (0..1)
+var _lock := 0.0                 # aim lock progress (0..1)
 var _lock_target: Node3D = null
 
 
@@ -70,23 +70,23 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Vue à la souris
+	# Mouse look
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
 		camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
 		camera.rotation.x = clampf(camera.rotation.x, -1.4, 1.4)
 
-	# Alt+E : bascule première personne / troisième personne (comme Neocron)
+	# Alt+E: toggle first person / third person (like Neocron)
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_E and event.alt_pressed:
 		_toggle_view()
 
-	# C : accroupissement verrouillé (on reste baissé jusqu'au prochain C)
+	# C: locked crouch (stay down until the next C)
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_C:
 		_crouch_toggled = not _crouch_toggled
 
-	# 1 / 2 : changement d'arme (le laser doit avoir été construit)
+	# 1 / 2: weapon switch (the laser must have been crafted first)
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_1 and weapon != Weapon.AK:
 			weapon = Weapon.AK
@@ -101,29 +101,29 @@ func _unhandled_input(event: InputEvent) -> void:
 				fire_mode_label.text = "LASER : à construire d'abord"
 
 
-	# Echap : libérer / recapturer la souris
+	# Escape: release / recapture the mouse
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
-	# Clic gauche quand la souris est libre : la recapturer
-	# (le tir lui-même est géré en continu dans _physics_process)
+	# Left click while the mouse is free: recapture it
+	# (firing itself is handled continuously in _physics_process)
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			_fire_cd = 0.25   # petit délai pour ne pas tirer sur le clic de recapture
+			_fire_cd = 0.25   # small delay so the recapture click doesn't fire
 
 
 func _physics_process(delta: float) -> void:
-	# Gravité et saut
+	# Gravity and jumping
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 	elif Input.is_physical_key_pressed(KEY_SPACE) and not crouching:
 		velocity.y = JUMP_VELOCITY
 
-	# Accroupissement (Ctrl maintenu) : capsule raccourcie, caméra abaissée
+	# Crouching (Ctrl held): shortened capsule, lowered camera
 	var want_crouch := Input.is_physical_key_pressed(KEY_CTRL) or _crouch_toggled
 	if want_crouch != crouching:
 		crouching = want_crouch
@@ -132,7 +132,7 @@ func _physics_process(delta: float) -> void:
 		col_shape.position.y = 0.6 if crouching else 0.9
 	camera.position.y = lerpf(camera.position.y, 1.05 if crouching else 1.6, minf(delta * 10.0, 1.0))
 
-	# Déplacement ZQSD (positions physiques WASD)
+	# ZQSD movement (physical WASD positions)
 	var dir := Vector3.ZERO
 	if Input.is_physical_key_pressed(KEY_W):
 		dir -= transform.basis.z
@@ -154,9 +154,9 @@ func _physics_process(delta: float) -> void:
 	elif sprinting:
 		speed = SPRINT_SPEED
 
-	# Endurance : le sprint la consomme, marcher/s'arrêter la régénère.
-	# Une fois vidée, il faut remonter à un seuil avant de re-sprinter
-	# (évite le sprint saccadé à 0).
+	# Stamina: sprinting drains it, walking/standing regenerates it.
+	# Once emptied, it must recover past a threshold before sprinting again
+	# (avoids stuttery sprinting at 0).
 	if sprinting:
 		stamina = maxf(stamina - STAMINA_DRAIN * delta, 0.0)
 		if stamina == 0.0:
@@ -171,7 +171,7 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	# Eau toxique : rester dedans empoisonne
+	# Toxic water: staying in it poisons you
 	if global_position.y < WATER_LEVEL + 0.25:
 		health -= POISON_DPS * delta
 		if health <= 0.0:
@@ -180,15 +180,15 @@ func _physics_process(delta: float) -> void:
 	health_bar.value = health
 	stamina_bar.value = stamina
 
-	# Réticule façon Neocron : crochets autour de l'ennemi sous le viseur
+	# Neocron-style reticle: brackets around the enemy under the crosshair
 	var aimed: Node3D = null
 	if ray.is_colliding():
 		var c := ray.get_collider()
 		if c is Node3D and c.is_in_group("bat"):
 			aimed = c
-	# Lock progressif : la visée maintenue sur la même cible resserre le
-	# réticule et la dispersion. Quitter la cible fait décroître le lock
-	# rapidement (un bref écart ne remet pas tout à zéro).
+	# Progressive lock: keeping aim on the same target tightens the
+	# reticle and the spread. Leaving the target makes the lock decay
+	# quickly (a brief slip does not reset everything).
 	if aimed != null:
 		if aimed != _lock_target:
 			_lock_target = aimed
@@ -201,7 +201,7 @@ func _physics_process(delta: float) -> void:
 	reticle.target = aimed
 	reticle.lock_ratio = _lock
 
-	# Tir : AK en rafales de 3, ou laser (un rayon puis 3 s d'attente)
+	# Firing: AK in 3-round bursts, or laser (one beam then a 3 s wait)
 	_fire_cd = maxf(_fire_cd - delta, 0.0)
 	_laser_cd = maxf(_laser_cd - delta, 0.0)
 	var fire_pressed := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
@@ -222,15 +222,15 @@ func _physics_process(delta: float) -> void:
 
 
 func _shoot() -> void:
-	# Point de départ de la balle : canon de l'AK (celle du personnage en
-	# 3e personne, celle de la vue FPS sinon). La visée reste la caméra.
+	# Bullet origin: the AK's barrel (the character's one in
+	# third person, the FPS-view one otherwise). Aiming stays camera-based.
 	var muzzle: Vector3
 	if third_person and visual.has_node("AK47/Muzzle"):
 		muzzle = visual.get_node("AK47/Muzzle").global_position
 	else:
 		muzzle = camera.global_transform * Vector3(0.2, -0.2, -0.7)
-	# Dispersion : cône aléatoire dont l'angle se resserre avec le lock.
-	# Sans lock, l'AK arrose (~2.6 deg) ; visée maintenue = balles précises.
+	# Spread: random cone whose angle tightens with the lock.
+	# Without lock the AK sprays (~2.6 deg); sustained aim = precise bullets.
 	var spread := lerpf(SPREAD_MAX, SPREAD_MIN, _lock)
 	var ang := randf_range(0.0, TAU)
 	var dev := randf() * spread
@@ -239,11 +239,11 @@ func _shoot() -> void:
 
 	Sfx.play_gunshot(muzzle)
 
-	# En ligne : notifier le serveur (les autres clients rejoueront le tir)
+	# Online: notify the server (other clients will replay the shot)
 	Net.send_shoot(muzzle, aim_dir)
 
-	# Raycast le long de la direction déviée (le RayCast3D du centre-écran
-	# ne sert plus qu'à la détection de cible du réticule)
+	# Raycast along the deviated direction (the center-screen RayCast3D
+	# is now only used for the reticle's target detection)
 	var from: Vector3 = camera.global_position
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, from + aim_dir * 100.0)
@@ -258,12 +258,12 @@ func _shoot() -> void:
 		normal = hit.normal
 		collider = hit.collider
 	else:
-		# Tir dans le vide : la balle vole tout droit sur 100 m puis disparaît
+		# Shot into the void: the bullet flies straight for 100 m then vanishes
 		target = from + aim_dir * 100.0
 
 	var bullet := BulletScript.new()
 	bullet.setup(muzzle, target, normal, collider, aim_dir * SHOOT_FORCE)
-	# Sans lock, les balles qui touchent quand même font moitié moins mal
+	# Without lock, bullets that still hit deal half damage
 	bullet.damage = lerpf(0.5, 1.0, _lock)
 	get_tree().current_scene.add_child(bullet)
 
@@ -278,20 +278,20 @@ func _toggle_view() -> void:
 		camera.make_current()
 
 
-## Subir des dégâts (acide des chauves-souris, poison...).
+## Take damage (bat acid, poison...).
 func take_damage(amount: float) -> void:
 	health -= amount
 	if health <= 0.0:
 		_die()
 
 
-## Soin (trousse de soin de l'inventaire).
+## Healing (medkit from the inventory).
 func heal(amount: float) -> void:
 	health = minf(health + amount, MAX_HEALTH)
 
 
-## Mort : retour au point de spawn, vie et endurance restaurées,
-## mais TOUT l'inventaire est perdu.
+## Death: back to the spawn point, health and stamina restored,
+## but the ENTIRE inventory is lost.
 func _die() -> void:
 	health = MAX_HEALTH
 	stamina = MAX_STAMINA
@@ -302,7 +302,7 @@ func _die() -> void:
 		global_position = spawn_position
 
 
-## --- Système d'armes ---
+## --- Weapon system ---
 
 func _owns_laser() -> bool:
 	for id in Inventory.items:
@@ -321,7 +321,7 @@ func _update_viewmodels() -> void:
 	laser_gun.visible = not third_person and weapon == Weapon.LASER
 
 
-## Tir laser : rayon hitscan précis, gros dégâts, visible 3 secondes.
+## Laser shot: precise hitscan beam, heavy damage, visible 3 seconds.
 func _shoot_laser() -> void:
 	var muzzle: Vector3 = camera.global_transform * Vector3(0.22, -0.2, -0.78)
 	var spread := lerpf(0.02, 0.001, _lock)

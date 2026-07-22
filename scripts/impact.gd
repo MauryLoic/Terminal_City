@@ -1,7 +1,7 @@
 extends Node3D
-## Effet d'impact dépendant du matériau touché : couleur des éclats et
-## de la marque différente pour terre, pierre, bois, buisson, métal.
-## Étincelles + marque orientée sur la surface, libérées après 3 s.
+## Impact effect depending on the material hit: spark color and
+## mark differ for dirt, stone, wood, bush and metal.
+## Sparks + mark oriented on the surface, freed after 3 s.
 
 const PALETTE := {
 	"dirt":  {"spark": Color(0.52, 0.38, 0.24), "mark": Color(0.22, 0.16, 0.1, 0.9), "glow": false},

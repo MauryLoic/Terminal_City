@@ -1,18 +1,18 @@
 extends Node3D
-## Générateur procédural du wasteland post-nucléaire (seed déterministe).
+## Procedural generator of the post-nuclear wasteland (deterministic seed).
 ##
-## Système de matériaux : chaque objet du décor porte des métadonnées
-## lues par bullet.gd à l'impact :
+## Material system: every scenery object carries metadata
+## read by bullet.gd on impact:
 ##   "mat"          : "dirt" | "stone" | "wood" | "bush" | "metal"
-##                    -> visuel d'impact (impact.gd)
-##   "hp"           : points de vie ; absent = indestructible
-##   "debris_color" / "debris_count" / "debris_size" : effet de destruction
-## Les RigidBody3D (rochers, débris, barils) sont poussés par les balles,
-## leur masse détermine à quelle vitesse ils bougent.
+##                    -> impact visual (impact.gd)
+##   "hp"           : hit points; absent = indestructible
+##   "debris_color" / "debris_count" / "debris_size": destruction effect
+## RigidBody3D nodes (rocks, junk, barrels) are pushed by bullets;
+## their mass determines how fast they move.
 
-const SIZE := 240.0          # taille du monde (mètres)
-const N := 121               # vertices par côté de la grille
-const WATER_Y := -1.1        # niveau de l'eau toxique
+const SIZE := 240.0          # world size (meters)
+const N := 121               # vertices per grid side
+const WATER_Y := -1.1        # toxic water level
 const WORLD_SEED := 1337
 
 const TREE_COUNT := 35
@@ -33,8 +33,8 @@ func _ready() -> void:
 	_generate(WORLD_SEED)
 
 
-## Régénère tout le monde avec une nouvelle seed (envoyée par le serveur
-## à la connexion : même seed = même monde pour tous les clients).
+## Regenerates the whole world with a new seed (sent by the server
+## on connection: same seed = same world for every client).
 func regenerate(new_seed: int) -> void:
 	if new_seed == current_seed:
 		return
@@ -58,7 +58,7 @@ func _generate(world_seed: int) -> void:
 	_scatter_props()
 
 
-## Hauteur du terrain en (x, z), rivière déjà creusée.
+## Terrain height at (x, z), river already carved.
 func get_height(x: float, z: float) -> float:
 	var h := _noise.get_noise_2d(x, z) * 4.0 + _noise_big.get_noise_2d(x, z) * 13.0 + 2.5
 	var d := absf(z - _river_center(x))
@@ -66,10 +66,10 @@ func get_height(x: float, z: float) -> float:
 	t = t * t * (3.0 - 2.0 * t)
 	h = lerpf(h, -3.5, t)
 
-	# Dunes-montagnes périphériques : le terrain monte fortement vers les
-	# bords pour masquer la limite du monde (appliqué APRÈS la rivière,
-	# qui semble ainsi venir des collines). Le bruit rend les crêtes
-	# irrégulières, comme de vraies dunes.
+	# Peripheral dune mountains: the terrain rises sharply toward the
+	# edges to hide the world boundary (applied AFTER the river,
+	# which thus seems to flow down from the hills). Noise makes the crests
+	# irregular, like real dunes.
 	var edge := maxf(absf(x), absf(z)) / (SIZE * 0.5)
 	var rim := smoothstep(0.7, 1.0, edge)
 	if rim > 0.0:
@@ -161,8 +161,8 @@ func _build_water() -> void:
 	add_child(mesh_inst)
 
 
-## Murs invisibles tout autour du monde : impossible de tomber dans le
-## vide. Ils réagissent aux balles comme de la pierre.
+## Invisible walls all around the world: impossible to fall into the
+## void. They react to bullets like stone.
 func _build_borders() -> void:
 	var body := StaticBody3D.new()
 	body.set_meta("mat", "stone")
@@ -232,8 +232,8 @@ func _random_ground_point(half: float) -> Vector3:
 	return Vector3(x, get_height(x, z), z)
 
 
-## Cherche un emplacement plat (écart de hauteur < 0.9 m sur le rayon
-## donné) hors de l'eau. Retourne Vector3.INF si rien trouvé.
+## Looks for a flat spot (height difference < 0.9 m over the given
+## radius) out of the water. Returns Vector3.INF if none found.
 func _find_flat_spot(half: float, radius: float, tries: int) -> Vector3:
 	for i in tries:
 		var x := _rng.randf_range(-half, half)
@@ -251,8 +251,8 @@ func _find_flat_spot(half: float, radius: float, tries: int) -> Vector3:
 	return Vector3.INF
 
 
-## Arbre mort : tronc + branches, avec collision sur le tronc.
-## Destructible en quelques balles (bois).
+## Dead tree: trunk + branches, with collision on the trunk.
+## Destructible in a few bullets (wood).
 func _make_dead_tree() -> StaticBody3D:
 	var tree := StaticBody3D.new()
 	var mat := StandardMaterial3D.new()
@@ -304,7 +304,7 @@ func _make_dead_tree() -> StaticBody3D:
 	return tree
 
 
-## Buisson sec : fragile, détruit en deux balles.
+## Dry bush: fragile, destroyed in two bullets.
 func _make_bush(p: Vector3) -> StaticBody3D:
 	var bush := StaticBody3D.new()
 	var r := _rng.randf_range(0.35, 0.8)
@@ -338,8 +338,8 @@ func _make_bush(p: Vector3) -> StaticBody3D:
 	return bush
 
 
-## Rocher : RigidBody3D indestructible mais poussable — sa masse (selon
-## sa taille) fait qu'il bouge à peine sous les balles.
+## Rock: indestructible but pushable RigidBody3D — its mass (based on
+## its size) means it barely moves when shot.
 func _make_rock(p: Vector3) -> RigidBody3D:
 	var rock := RigidBody3D.new()
 	var size := Vector3(
@@ -371,15 +371,15 @@ func _make_rock(p: Vector3) -> RigidBody3D:
 	return rock
 
 
-## Débris épars : planches légères (volent sous les balles), blocs de
-## pierre moyens, barils métalliques rouillés. Masses variées = réactions
-## différentes à l'arme.
+## Scattered junk: light planks (fly when shot), medium
+## stone blocks, rusty metal barrels. Varied masses = varied reactions
+## to the weapon.
 func _make_junk(p: Vector3) -> RigidBody3D:
 	var junk := RigidBody3D.new()
 	var roll := _rng.randf()
 
 	if roll < 0.4:
-		# Planche de bois, très légère : valdingue au moindre tir
+		# Wooden plank, very light: goes flying at the slightest shot
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = Color(0.42, 0.28, 0.14) * _rng.randf_range(0.85, 1.1)
 		mat.roughness = 1.0
@@ -392,7 +392,7 @@ func _make_junk(p: Vector3) -> RigidBody3D:
 		junk.set_meta("debris_count", 5)
 		junk.set_meta("debris_size", 0.1)
 	elif roll < 0.7:
-		# Bloc de pierre moyen : bouge un peu
+		# Medium stone block: moves a little
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = Color(0.5, 0.44, 0.4) * _rng.randf_range(0.85, 1.1)
 		mat.roughness = 1.0
@@ -401,7 +401,7 @@ func _make_junk(p: Vector3) -> RigidBody3D:
 		junk.mass = 4.0
 		junk.set_meta("mat", "stone")
 	else:
-		# Baril métallique rouillé : lourd, destructible lentement
+		# Rusty metal barrel: heavy, slowly destructible
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = Color(0.45, 0.3, 0.2) * _rng.randf_range(0.85, 1.1)
 		mat.roughness = 0.6
@@ -446,8 +446,8 @@ func _junk_box(body: RigidBody3D, size: Vector3, mat: StandardMaterial3D) -> voi
 	body.add_child(col)
 
 
-## Ajoute à un StaticBody3D un bloc (mesh + collision), brique de base
-## des bâtiments.
+## Adds a block (mesh + collision) to a StaticBody3D, the basic building
+## brick of the buildings.
 func _add_block(body: StaticBody3D, size: Vector3, pos: Vector3, mat: StandardMaterial3D, rot := Vector3.ZERO) -> void:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
@@ -466,7 +466,7 @@ func _add_block(body: StaticBody3D, size: Vector3, pos: Vector3, mat: StandardMa
 	body.add_child(cs)
 
 
-## Bâtisse en pierre : INDESTRUCTIBLE (juste des éclats de pierre).
+## Stone building: INDESTRUCTIBLE (just stone chips).
 func _make_stone_building() -> StaticBody3D:
 	var b := StaticBody3D.new()
 	var stone := StandardMaterial3D.new()
@@ -500,8 +500,8 @@ func _make_stone_building() -> StaticBody3D:
 	return b
 
 
-## Cabane en bois : destructible LENTEMENT (elle encaisse ~45 balles
-## avant de s'effondrer en débris).
+## Wooden shack: SLOWLY destructible (it absorbs ~45 bullets
+## before collapsing into debris).
 func _make_shack() -> StaticBody3D:
 	var b := StaticBody3D.new()
 	var wood := StandardMaterial3D.new()

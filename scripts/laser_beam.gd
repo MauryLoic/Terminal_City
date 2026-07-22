@@ -1,7 +1,7 @@
 extends Node3D
-## Rayon laser : dégâts instantanés à l'impact (hitscan), puis le rayon
-## rouge lumineux reste visible 3 secondes en s'évanouissant — on ne
-## peut retirer qu'une fois le rayon dissipé (cooldown géré par player.gd).
+## Laser beam: instant damage on impact (hitscan), then the glowing
+## red beam stays visible for 3 seconds while fading — you can
+## fire again only once the beam has dissipated (cooldown handled by player.gd).
 
 const HitEffects := preload("res://scripts/hit_effects.gd")
 const DURATION := 3.0
@@ -23,14 +23,14 @@ func setup(from: Vector3, to: Vector3, normal: Vector3, collider: Object, dmg: f
 
 
 func _ready() -> void:
-	# Dégâts immédiats : le rayon est instantané, seul le visuel persiste
+	# Immediate damage: the beam is instantaneous, only the visual lingers
 	if _normal != Vector3.ZERO:
 		if not is_instance_valid(_collider):
 			_collider = null
 		var dir := (_to - _from).normalized()
 		HitEffects.resolve(self, _collider, _to, _normal, damage, dir * 6.0)
 
-	# Visuel : cylindre rouge émissif tendu du canon au point d'impact
+	# Visual: emissive red cylinder stretched from barrel to impact point
 	var dist := _from.distance_to(_to)
 	var mesh := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
@@ -51,7 +51,7 @@ func _ready() -> void:
 	global_position = (_from + _to) * 0.5
 	global_transform.basis = _basis_y((_to - _from).normalized())
 
-	# Fondu progressif sur toute la durée, puis disparition
+	# Gradual fade over the whole duration, then removal
 	var tw := create_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, DURATION)
 	tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.0, DURATION)

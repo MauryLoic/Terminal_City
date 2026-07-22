@@ -1,7 +1,7 @@
 extends Node3D
-## Joueur distant : purement visuel, piloté par les états reçus du serveur.
-## Les positions arrivent à ~20 Hz ; on interpole en douceur vers la
-## dernière cible connue pour un rendu fluide quel que soit le framerate.
+## Remote player: purely visual, driven by states received from the server.
+## Positions arrive at ~20 Hz; we smoothly interpolate toward the
+## last known target for smooth rendering at any framerate.
 
 const LERP_SPEED := 12.0
 
@@ -18,8 +18,8 @@ func set_player_name(n: String) -> void:
 	name_label.text = n
 
 
-## Nouvel état reçu du serveur. Le premier état téléporte (pas de glissement
-## depuis l'origine), les suivants sont interpolés dans _process.
+## New state received from the server. The first state teleports (no sliding
+## from the origin), subsequent ones are interpolated in _process.
 func apply_state(pos: Vector3, yaw: float, pitch: float) -> void:
 	if not _has_state:
 		global_position = pos

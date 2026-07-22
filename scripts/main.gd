@@ -1,25 +1,25 @@
 extends Node3D
-## Scène principale du wasteland. Orchestration du multijoueur côté client :
-## spawn/despawn des joueurs distants, application des états serveur,
-## rejeu des tirs distants, régénération du monde avec la seed du serveur.
+## Main wasteland scene. Client-side multiplayer orchestration:
+## spawning/despawning remote players, applying server states,
+## replay of remote shots, world regeneration with the server seed.
 
 const RemotePlayerScene := preload("res://scenes/remote_player.tscn")
 const ConnectUiScene := preload("res://scenes/connect_ui.tscn")
 const BulletScript := preload("res://scripts/bullet.gd")
 
-var _remotes := {}   # id (int) -> instance de remote_player
+var _remotes := {}   # id (int) -> remote_player instance
 var _ui: CanvasLayer
 
 
 func _ready() -> void:
-	# Soleil bas, chaud mais clair : ambiance poussiéreuse, pas étouffante
+	# Low sun, warm but bright: dusty mood without being stifling
 	$Sun.rotation_degrees = Vector3(-42.0, -60.0, 0.0)
 	$Sun.light_color = Color(1.0, 0.85, 0.68)
 	$Sun.light_energy = 1.4
 
 	_place_player()
 
-	# Réseau : le joueur local est échantillonné à 20 Hz par l'autoload Net
+	# Network: the local player is sampled at 20 Hz by the Net autoload
 	Net.local_player = $Player
 	Net.connected.connect(_on_connected)
 	Net.disconnected.connect(_on_disconnected)
@@ -33,7 +33,7 @@ func _ready() -> void:
 	_ui.connect_requested.connect(_on_connect_requested)
 	_ui.disconnect_requested.connect(Net.disconnect_from_server)
 
-	# Inventaire (touche I), construction et faune hostile
+	# Inventory (I key), crafting and hostile wildlife
 	add_child(preload("res://scenes/inventory_ui.tscn").instantiate())
 	add_child(preload("res://scenes/craft_ui.tscn").instantiate())
 	var spawner := Node.new()
@@ -41,7 +41,7 @@ func _ready() -> void:
 	add_child(spawner)
 
 
-## Pose le joueur au sol, sur la rive sud de la rivière.
+## Places the player on the ground, on the south bank of the river.
 func _place_player() -> void:
 	var y: float = $World.get_height(0.0, 60.0)
 	$Player.position = Vector3(0.0, y + 1.5, 60.0)
@@ -50,8 +50,8 @@ func _place_player() -> void:
 
 
 func _process(_delta: float) -> void:
-	# Filet de sécurité : si malgré les murs le joueur passe sous le monde,
-	# on le repose au spawn au lieu de le laisser tomber indéfiniment.
+	# Safety net: if the player slips under the world despite the walls,
+	# put them back at spawn instead of letting them fall forever.
 	if $Player.global_position.y < -40.0:
 		_place_player()
 
@@ -63,8 +63,8 @@ func _on_connect_requested(host: String, port: int, player_name: String) -> void
 
 
 func _on_connected(_my_id: int, world_seed: int) -> void:
-	# Même seed serveur = même monde pour tous les clients.
-	# seed 0 = le serveur laisse le monde local tel quel.
+	# Same server seed = same world for every client.
+	# seed 0 = the server keeps the local world as-is.
 	if world_seed != 0 and world_seed != $World.current_seed:
 		$World.regenerate(world_seed)
 		_place_player()
@@ -86,7 +86,7 @@ func _on_player_left(id: int) -> void:
 		_remotes.erase(id)
 
 
-## Snapshot d'état du serveur (~20 Hz) : positions de tous les joueurs.
+## Server state snapshot (~20 Hz): positions of all players.
 func _on_state(players: Array) -> void:
 	for m in players:
 		if not m is Dictionary:
@@ -111,9 +111,9 @@ func _ensure_remote(id: int) -> Node3D:
 	return _remotes[id]
 
 
-## Tir d'un joueur distant : on refait le raycast localement (l'origine et
-## la direction viennent du serveur) puis on rejoue la balle traçante et
-## l'impact — purement cosmétique, comme pour le tir local.
+## Remote player shot: we redo the raycast locally (origin and
+## direction come from the server) then replay the tracer and
+## the impact — purely cosmetic, just like the local shot.
 func _on_remote_shot(_id: int, origin: Vector3, direction: Vector3) -> void:
 	Sfx.play_gunshot(origin)
 	var dir := direction.normalized()

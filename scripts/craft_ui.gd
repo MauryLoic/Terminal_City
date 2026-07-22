@@ -1,9 +1,9 @@
 extends CanvasLayer
-## Fenêtre de construction (ouverte depuis l'inventaire).
-## On sélectionne une recette, on clique sur la roue crantée en bas,
-## et l'assemblage réussit... ou produit du junk.
-## - Arme : nombre de slots aléatoire (0 à 5, les hauts slots sont rares)
-## - Trousse de soin : efficacité aléatoire (S/M/L)
+## Crafting window (opened from the inventory).
+## Select a recipe, click the gear wheel at the bottom,
+## and the assembly succeeds... or produces junk.
+## - Weapon: random slot count (0 to 5, high slot counts are rare)
+## - Medkit: random potency (S/M/L)
 
 const RECIPES := [
 	{
@@ -25,7 +25,7 @@ const COMPO_NAMES := {
 	"compo_chassis": "Châssis",
 	"compo_medical": "Compo médical",
 }
-# Probabilités du nombre de slots 0..5 (les armes à 5 slots sont rares)
+# Probabilities for slot count 0..5 (5-slot weapons are rare)
 const SLOT_WEIGHTS := [10, 25, 25, 20, 15, 5]
 
 @onready var recipe_box: VBoxContainer = $Center/Panel/VBox/Recipes
@@ -61,7 +61,7 @@ func open() -> void:
 
 func close() -> void:
 	$Center.visible = false
-	# Ne recapturer la souris que si l'inventaire est fermé lui aussi
+	# Only recapture the mouse if the inventory is closed as well
 	var inv := get_tree().get_first_node_in_group("inventory_ui")
 	if inv == null or not inv.is_open():
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -95,7 +95,7 @@ func _refresh() -> void:
 
 func _on_gear_pressed() -> void:
 	var r: Dictionary = RECIPES[_selected]
-	# Consommer les composants (l'échec les perd aussi : c'est le risque)
+	# Consume the components (failure loses them too: that's the risk)
 	for id: String in r.compos:
 		if not Inventory.remove_item(id, r.compos[id]):
 			return

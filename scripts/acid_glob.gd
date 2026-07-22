@@ -1,6 +1,6 @@
 extends Area3D
-## Globe d'acide craché par les chauves-souris : vole en ligne droite,
-## blesse le joueur au contact, éclabousse le décor sinon.
+## Acid glob spat by the bats: flies in a straight line,
+## hurts the player on contact, splashes the scenery otherwise.
 
 const SPEED := 13.0
 const DAMAGE := 12.0

@@ -1,6 +1,6 @@
 extends CanvasLayer
-## Panneau de connexion au serveur (F1 pour afficher/masquer).
-## Échap libère la souris (géré par player.gd) pour pouvoir cliquer.
+## Server connection panel (F1 to show/hide).
+## Escape frees the mouse (handled by player.gd) so you can click.
 
 signal connect_requested(host: String, port: int, player_name: String)
 signal disconnect_requested
@@ -59,8 +59,8 @@ func _on_ping(ms: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F1:
 		$Panel.visible = not $Panel.visible
-		# Afficher le panneau libère la souris pour cliquer dans les champs,
-		# le masquer la recapture pour le jeu.
+		# Showing the panel frees the mouse to click into the fields,
+		# hiding it recaptures the mouse for gameplay.
 		if $Panel.visible:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:

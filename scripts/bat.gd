@@ -1,24 +1,24 @@
 extends CharacterBody3D
-## Chauve-souris vampire mutante des wastelands. Vit en meute de deux.
+## Mutant vampire bat of the wastelands. Lives in packs of two.
 ##
-## PASSIVE par défaut : elle patrouille tranquillement autour de son
-## perchoir (home). Elle devient AGRESSIVE si le joueur s'approche trop
-## (< AGGRO_RANGE) ou si un membre de la meute est attaqué — auquel cas
-## LES DEUX répondent. Elle se calme si le joueur s'éloigne assez
-## (> LOSE_RANGE), ce qui laisse une fenêtre pour récupérer.
+## PASSIVE by default: it patrols quietly around its
+## roost (home). It turns AGGRESSIVE if the player gets too close
+## (< AGGRO_RANGE) or if a pack member is attacked — in which case
+## BOTH respond. It calms down if the player moves far enough away
+## (> LOSE_RANGE), which leaves a window to recover.
 
 signal died(pos: Vector3)
 
 const FLY_SPEED := 6.5
 const ORBIT_RADIUS := 9.0
 const ATTACK_RANGE := 30.0
-const AGGRO_RANGE := 9.0     # distance de déclenchement
-const LOSE_RANGE := 45.0     # distance de désengagement
+const AGGRO_RANGE := 9.0     # trigger distance
+const LOSE_RANGE := 45.0     # disengage distance
 const AcidScript := preload("res://scripts/acid_glob.gd")
 const CorpseScript := preload("res://scripts/corpse.gd")
 
-var pack_id := 0             # les membres d'une même meute partagent cet id
-var home := Vector3.ZERO     # centre de patrouille (posé par le spawner)
+var pack_id := 0             # members of the same pack share this id
+var home := Vector3.ZERO     # patrol center (set by the spawner)
 var aggro := false
 
 var _t := randf() * TAU
@@ -55,7 +55,7 @@ func _physics_process(delta: float) -> void:
 	var ppos: Vector3 = player.global_position
 	var dist := global_position.distance_to(ppos)
 
-	# Transitions d'état
+	# State transitions
 	if not aggro and dist < AGGRO_RANGE:
 		_alert_pack()
 	elif aggro and dist > LOSE_RANGE:
@@ -63,7 +63,7 @@ func _physics_process(delta: float) -> void:
 
 	var target: Vector3
 	if aggro:
-		# Chasse : orbite autour du joueur, ~5 m au-dessus
+		# Hunting: orbit around the player, ~5 m above
 		_orbit += delta * 0.5
 		target = ppos + Vector3(
 			cos(_orbit) * ORBIT_RADIUS,
@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 			sin(_orbit) * ORBIT_RADIUS
 		)
 	else:
-		# Patrouille paisible : ronde lente autour du perchoir
+		# Peaceful patrol: slow circling around the roost
 		_orbit += delta * 0.25
 		target = home + Vector3(
 			cos(_orbit) * 6.0,
@@ -82,18 +82,18 @@ func _physics_process(delta: float) -> void:
 	velocity = (target - global_position).limit_length(FLY_SPEED if aggro else FLY_SPEED * 0.5)
 	move_and_slide()
 
-	# Orientation : vers le joueur en chasse, vers sa route en patrouille
+	# Facing: toward the player while hunting, toward its path on patrol
 	var face := ppos if aggro else target
 	var flat := Vector3(face.x, global_position.y, face.z)
 	if global_position.distance_to(flat) > 1.0:
 		look_at(flat, Vector3.UP)
 
-	# Battement d'ailes (plus nerveux en chasse)
+	# Wing flapping (more frantic while hunting)
 	var flap := sin(_t * (12.0 if aggro else 7.0)) * 0.65
 	_wing_l.rotation.z = -flap
 	_wing_r.rotation.z = flap
 
-	# Crachat d'acide : uniquement en chasse
+	# Acid spit: only while hunting
 	if aggro:
 		_shoot_t -= delta
 		if _shoot_t <= 0.0 and dist < ATTACK_RANGE:
@@ -101,8 +101,8 @@ func _physics_process(delta: float) -> void:
 			_spit_acid(ppos)
 
 
-## Appelé par bullet.gd à chaque balle encaissée : flash rouge et
-## toute la meute passe à l'attaque.
+## Called by bullet.gd for every bullet taken: red flash and
+## the whole pack goes on the attack.
 func on_hit() -> void:
 	_flash()
 	_alert_pack()
@@ -130,9 +130,9 @@ func _spit_acid(target: Vector3) -> void:
 	Sfx.play_acid(global_position)
 
 
-## Appelé par bullet.gd juste avant la destruction : la bête tombe du
-## ciel en corps lootable (composants / junk), et le spawner est
-## prévenu pour programmer la réapparition.
+## Called by bullet.gd right before destruction: the beast falls from the
+## sky as a lootable corpse (components / junk), and the spawner is
+## notified to schedule the respawn.
 func on_destroyed() -> void:
 	var corpse := RigidBody3D.new()
 	corpse.set_script(CorpseScript)

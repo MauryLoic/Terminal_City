@@ -1,8 +1,8 @@
 extends Node3D
-## Personnage style Psi Monk (Confrérie de Crahn) : longue robe-armure
-## bordeaux à capuche, ceinture, gantelet PSI lumineux à la main droite,
-## AK-47 tenue devant. Entièrement en primitives.
-## Sert de modèle au joueur local (vue 3e personne) et aux joueurs distants.
+## Psi Monk-style character (Brotherhood of Crahn): long armor-robe
+## in hooded burgundy, belt, glowing PSI gauntlet on the right hand,
+## AK-47 held in front. Built entirely from primitives.
+## Used as the model for the local player (third-person view) and remote players.
 
 
 func _ready() -> void:
@@ -11,31 +11,31 @@ func _ready() -> void:
 	var skin := _mat(Color(0.82, 0.62, 0.48))
 	var belt := _mat(Color(0.22, 0.17, 0.1))
 
-	# Jupe de robe évasée jusqu'au sol
+	# Robe skirt flared down to the ground
 	_cyl(robe, 0.27, 0.58, 1.25, Vector3(0, 0.62, 0))
-	# Torse
+	# Torso
 	_cyl(robe, 0.3, 0.28, 0.6, Vector3(0, 1.5, 0))
-	# Ceinture
+	# Belt
 	_cyl(belt, 0.315, 0.315, 0.09, Vector3(0, 1.22, 0))
-	# Épaulières
+	# Shoulder pads
 	_sphere(robe_dark, 0.13, Vector3(0.32, 1.72, 0))
 	_sphere(robe_dark, 0.13, Vector3(-0.32, 1.72, 0))
-	# Bras tendus vers l'avant, vers l'arme
+	# Arms stretched forward, toward the weapon
 	_arm(robe, Vector3(0.32, 1.72, 0), 1.15, 0.3)
 	_arm(robe, Vector3(-0.32, 1.72, 0), 1.05, -0.3)
-	# Tête sous la capuche
+	# Head under the hood
 	_sphere(skin, 0.145, Vector3(0, 1.95, -0.02))
 	var hood := _sphere(robe, 0.2, Vector3(0, 1.98, 0.06))
 	hood.scale = Vector3(1.0, 1.08, 1.05)
 
-	# Gantelet PSI Crahn à la main droite, légèrement lumineux
+	# Crahn PSI gauntlet on the right hand, faintly glowing
 	var g := _mat(Color(0.2, 0.55, 0.9))
 	g.emission_enabled = true
 	g.emission = Color(0.2, 0.55, 0.9)
 	g.emission_energy_multiplier = 1.2
 	_sphere(g, 0.075, Vector3(0.3, 1.32, -0.35))
 
-	# AK-47 tenue devant
+	# AK-47 held in front
 	var ak := preload("res://scenes/ak47.tscn").instantiate()
 	ak.name = "AK47"
 	ak.position = Vector3(0.22, 1.33, -0.32)
@@ -74,8 +74,8 @@ func _cyl(mat: StandardMaterial3D, top: float, bottom: float, height: float, pos
 	add_child(mi)
 
 
-## Bras : pivot à l'épaule, cylindre orienté vers le bas puis basculé
-## vers l'avant (pitch) et vers le centre (yaw) pour rejoindre l'arme.
+## Arm: pivot at the shoulder, cylinder pointing down then tilted
+## forward (pitch) and toward the center (yaw) to reach the weapon.
 func _arm(mat: StandardMaterial3D, shoulder: Vector3, pitch: float, yaw: float) -> void:
 	var pivot := Node3D.new()
 	pivot.position = shoulder

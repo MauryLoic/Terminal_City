@@ -1,11 +1,11 @@
 extends Node3D
-## Balle traçante visuelle : vole du canon jusqu'au point d'impact
-## (le raycast a déjà déterminé la cible), puis déclenche l'effet d'impact.
+## Visual tracer bullet: flies from the barrel to the impact point
+## (the raycast already determined the target), then triggers the impact effect.
 
 const SPEED := 70.0
 const HitEffects := preload("res://scripts/hit_effects.gd")
 
-var damage := 1.0   # dégâts de cette balle (réduits sans lock de visée)
+var damage := 1.0   # this bullet's damage (reduced without aim lock)
 
 var _start: Vector3
 var _target: Vector3
@@ -30,7 +30,7 @@ func setup(start: Vector3, target: Vector3, normal: Vector3, collider: Object, i
 func _ready() -> void:
 	position = _start
 
-	# Petit projectile allongé, jaune lumineux
+	# Small elongated projectile, glowing yellow
 	var mesh := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(0.03, 0.03, 0.35)
@@ -44,7 +44,7 @@ func _ready() -> void:
 	mesh.mesh = box
 	add_child(mesh)
 
-	# Orienter la balle dans sa direction de vol
+	# Orient the bullet along its flight direction
 	var up := Vector3.UP
 	if absf(_direction.dot(up)) > 0.99:
 		up = Vector3.RIGHT
@@ -61,10 +61,10 @@ func _process(delta: float) -> void:
 
 
 func _on_arrive() -> void:
-	# Impact réel uniquement si le raycast avait touché quelque chose.
-	# L'objet visé a pu être détruit pendant le vol de la balle : une
-	# référence libérée ne passe pas le contrôle de type de resolve(),
-	# on la remplace donc par null AVANT l'appel.
+	# Real impact only if the raycast actually hit something.
+	# The target may have been destroyed while the bullet was in flight: a
+	# freed reference does not pass resolve()'s argument type check,
+	# so we replace it with null BEFORE the call.
 	if _normal != Vector3.ZERO:
 		if not is_instance_valid(_collider):
 			_collider = null

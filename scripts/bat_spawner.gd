@@ -1,16 +1,16 @@
 extends Node
-## Gestion des meutes de chauves-souris (par deux). Quand une meute est
-## entièrement morte, une nouvelle paire apparaît 10 s plus tard, à une
-## position aléatoire dans un rayon autour du joueur.
+## Bat pack management (pairs). When a pack is
+## entirely dead, a new pair appears 10 s later, at a
+## random position within a radius around the player.
 
 const BatScript := preload("res://scripts/bat.gd")
 const RESPAWN_DELAY := 10.0
-const PACK_COUNT := 2        # nombre de meutes (2 meutes = 4 chauves-souris)
+const PACK_COUNT := 2        # number of packs (2 packs = 4 bats)
 const MIN_DIST := 22.0
 const MAX_DIST := 40.0
 
 var _next_pack_id := 1
-var _packs := {}             # pack_id -> nombre de vivantes
+var _packs := {}             # pack_id -> number alive
 
 
 func _ready() -> void:

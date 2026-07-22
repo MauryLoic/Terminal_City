@@ -1,7 +1,7 @@
 extends Node3D
-## Pistolet laser artisanal (viewmodel) : corps compact métallique,
-## canon fin, émetteur rouge lumineux au bout. Canon vers -Z.
-## Un Marker3D "Muzzle" marque la sortie du rayon.
+## Handcrafted laser pistol (viewmodel): compact metal body,
+## thin barrel, glowing red emitter at the tip. Barrel points toward -Z.
+## A "Muzzle" Marker3D marks the beam's exit point.
 
 
 func _ready() -> void:
@@ -18,12 +18,12 @@ func _ready() -> void:
 	glow.emission_energy_multiplier = 2.0
 	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
-	_box(metal, Vector3(0.06, 0.08, 0.24), Vector3(0, 0, -0.06))                       # corps
-	_box(dark, Vector3(0.04, 0.1, 0.05), Vector3(0, -0.08, 0.03), Vector3(0.3, 0, 0))  # poignée
-	_cyl(metal, 0.016, 0.18, Vector3(0, 0.01, -0.27))                                  # canon
+	_box(metal, Vector3(0.06, 0.08, 0.24), Vector3(0, 0, -0.06))                       # body
+	_box(dark, Vector3(0.04, 0.1, 0.05), Vector3(0, -0.08, 0.03), Vector3(0.3, 0, 0))  # grip
+	_cyl(metal, 0.016, 0.18, Vector3(0, 0.01, -0.27))                                  # barrel
 	_box(metal, Vector3(0.05, 0.02, 0.1), Vector3(0, 0.055, -0.1))                     # rail
 
-	var tip := MeshInstance3D.new()                                                    # émetteur
+	var tip := MeshInstance3D.new()                                                    # emitter
 	var sm := SphereMesh.new()
 	sm.radius = 0.02
 	sm.height = 0.04

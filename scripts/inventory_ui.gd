@@ -1,8 +1,8 @@
 extends CanvasLayer
-## Grille d'inventaire (touche I).
-## - Clic gauche sur une trousse de soin : l'utiliser
-## - Clic droit sur n'importe quel objet : en jeter un (junk compris)
-## - Bouton roue crantée : ouvrir la fenêtre de construction
+## Inventory grid (I key).
+## - Left click on a medkit: use it
+## - Right click on any item: drop one (junk included)
+## - Gear wheel button: open the crafting window
 
 const SLOTS := 16
 const ITEM_DEFS := {
@@ -44,7 +44,7 @@ func is_open() -> bool:
 	return $Center.visible
 
 
-## Définition d'un objet, y compris les armes craftées "ak_slots_N".
+## Item definition, including crafted "ak_slots_N" weapons.
 func _item_def(id: String) -> Dictionary:
 	if ITEM_DEFS.has(id):
 		return ITEM_DEFS[id]
@@ -92,8 +92,8 @@ func _on_slot_pressed(i: int) -> void:
 			player.heal(d.heal)
 
 
-## Clic droit : jeter une unité de l'objet — elle apparaît au sol devant
-## le joueur, reste 30 s (re-ramassable) puis disparaît.
+## Right click: drop one unit of the item — it appears on the ground in
+## front of the player, stays 30 s (pickable again) then disappears.
 func _on_slot_gui_input(event: InputEvent, i: int) -> void:
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -127,7 +127,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if $Center.visible:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
-			# Fermer aussi la construction, puis recapturer la souris
+			# Also close the crafting window, then recapture the mouse
 			var craft := get_tree().get_first_node_in_group("craft_ui")
 			if craft and craft.is_open():
 				craft.close()

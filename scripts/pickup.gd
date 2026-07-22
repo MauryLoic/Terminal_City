@@ -1,6 +1,6 @@
 extends Area3D
-## Objet ramassable posé au sol : petite trousse blanche à croix rouge
-## qui tourne et flotte. Ramassée au contact du joueur -> inventaire.
+## Pickable item on the ground: small white kit with a red cross
+## that spins and floats. Picked up on player contact -> inventory.
 
 var item_id := "medkit"
 
@@ -9,7 +9,7 @@ var _base_y := 0.0
 
 
 func _ready() -> void:
-	# Poser au sol quel que soit l'endroit où l'objet est lâché
+	# Snap to the ground wherever the item is dropped
 	var world := get_tree().current_scene.get_node_or_null("World")
 	if world:
 		global_position.y = world.get_height(global_position.x, global_position.z) + 0.5

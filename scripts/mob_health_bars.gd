@@ -1,6 +1,6 @@
 extends Control
-## Barres de vie flottantes des mobs : projetées à l'écran au-dessus de
-## chaque chauve-souris (fond sombre + remplissage rouge selon les PV).
+## Floating mob health bars: projected on screen above
+## each bat (dark background + red fill based on HP).
 
 const BAR_W := 46.0
 const BAR_H := 5.0
