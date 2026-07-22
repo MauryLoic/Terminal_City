@@ -34,6 +34,7 @@ func _ready() -> void:
 	set_meta("hp", 12.0)
 	set_meta("hp_max", 12.0)
 	set_meta("bar_height", 3.0)
+	set_meta("mob_name", "Warbot")
 	set_meta("debris_color", Color(0.35, 0.37, 0.34))
 	set_meta("debris_count", 14)
 	set_meta("debris_size", 0.2)

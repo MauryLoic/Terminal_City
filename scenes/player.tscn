@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ak47.tscn" id="2_ak"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/target_reticle.gd" id="4_reticle"]
 [ext_resource type="Script" path="res://scripts/laser_pistol.gd" id="5_laser"]
 [ext_resource type="Script" path="res://scripts/mob_health_bars.gd" id="6_mobbars"]
+[ext_resource type="Script" path="res://scripts/crowbar.gd" id="7_crowbar"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -55,6 +56,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.22, -0.35)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, -0.2, -0.4)
 visible = false
 script = ExtResource("5_laser")
+
+[node name="Crowbar" type="Node3D" parent="Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.28, -0.45)
+visible = false
+script = ExtResource("7_crowbar")
 
 [node name="SpringArm3D" type="SpringArm3D" parent="Camera3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0.3, 0)

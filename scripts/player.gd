@@ -32,9 +32,13 @@ const WATER_LEVEL := -1.1
 
 const LASER_DAMAGE := 3.0     # beam damage (= 3 locked bullets)
 const LASER_COOLDOWN := 3.0   # the beam stays visible 3 s before the next shot
+const MELEE_DAMAGE := 1.5
+const MELEE_RANGE := 2.4
+const MELEE_COOLDOWN := 0.7
 
 const BulletScript := preload("res://scripts/bullet.gd")
 const LaserBeamScript := preload("res://scripts/laser_beam.gd")
+const HitEffects := preload("res://scripts/hit_effects.gd")
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
@@ -48,6 +52,7 @@ const LaserBeamScript := preload("res://scripts/laser_beam.gd")
 @onready var reticle: Control = $HUD/Reticle
 @onready var fire_mode_label: Label = $HUD/FireMode
 @onready var laser_gun: Node3D = $Camera3D/LaserGun
+@onready var crowbar: Node3D = $Camera3D/Crowbar
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
@@ -58,10 +63,11 @@ var crouching := false
 var _crouch_toggled := false
 var _can_sprint := true
 var _fire_cd := 0.0
-enum Weapon { AK, LASER }
+enum Weapon { AK, LASER, MELEE }
 
 var weapon: int = Weapon.AK
 var _laser_cd := 0.0
+var _melee_cd := 0.0
 var _burst_left := 0
 var _prev_fire_pressed := false
 var _lock := 0.0                 # aim lock progress (0..1)
@@ -113,6 +119,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_update_weapon_ui()
 			else:
 				fire_mode_label.text = "LASER: craft it first"
+		elif event.physical_keycode == KEY_3 and weapon != Weapon.MELEE:
+			weapon = Weapon.MELEE
+			Sfx.play_click()
+			_update_weapon_ui()
 
 
 	# Escape: release / recapture the mouse
@@ -233,6 +243,7 @@ func _physics_process(delta: float) -> void:
 	# Firing: AK in 3-round bursts, or laser (one beam then a 3 s wait)
 	_fire_cd = maxf(_fire_cd - delta, 0.0)
 	_laser_cd = maxf(_laser_cd - delta, 0.0)
+	_melee_cd = maxf(_melee_cd - delta, 0.0)
 	var fire_pressed := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
 			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
 	if weapon == Weapon.AK:
@@ -252,7 +263,7 @@ func _physics_process(delta: float) -> void:
 				_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
 				_shoot()
 				_update_weapon_ui()
-	else:
+	elif weapon == Weapon.LASER:
 		if fire_pressed and not _prev_fire_pressed and _laser_cd == 0.0:
 			if laser_ammo > 0:
 				laser_ammo -= 1
@@ -262,6 +273,11 @@ func _physics_process(delta: float) -> void:
 			else:
 				Sfx.play_click()   # dry fire: no cells left
 				_laser_cd = 0.4
+	else:
+		# Crowbar: always usable, no ammo — the guaranteed fallback
+		if fire_pressed and _melee_cd == 0.0:
+			_melee_cd = MELEE_COOLDOWN
+			_melee_attack()
 	_prev_fire_pressed = fire_pressed
 
 
@@ -370,14 +386,17 @@ func _owns_laser() -> bool:
 func _update_weapon_ui() -> void:
 	if weapon == Weapon.AK:
 		fire_mode_label.text = "AK — BURST x3 — AMMO %d" % ak_ammo
-	else:
+	elif weapon == Weapon.LASER:
 		fire_mode_label.text = "LASER PISTOL — CELLS %d" % laser_ammo
+	else:
+		fire_mode_label.text = "CROWBAR — MELEE"
 	_update_viewmodels()
 
 
 func _update_viewmodels() -> void:
 	fp_gun.visible = not third_person and weapon == Weapon.AK
 	laser_gun.visible = not third_person and weapon == Weapon.LASER
+	crowbar.visible = not third_person and weapon == Weapon.MELEE
 
 
 ## Laser shot: precise hitscan beam, heavy damage, visible 3 seconds.
@@ -405,3 +424,19 @@ func _shoot_laser() -> void:
 	else:
 		beam.setup(muzzle, from + aim_dir * 120.0, Vector3.ZERO, null, 0.0)
 	get_tree().current_scene.add_child(beam)
+
+
+## Melee swing: short-range raycast hit, always available (no ammo).
+## Guarantees the recovery loop: crowbar -> warbots -> resources ->
+## ammo crafting, even with completely empty magazines.
+func _melee_attack() -> void:
+	crowbar.swing()
+	Sfx.play_swing(camera.global_position)
+	var from: Vector3 = camera.global_position
+	var dir: Vector3 = -camera.global_transform.basis.z
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, from + dir * MELEE_RANGE)
+	query.exclude = [get_rid()]
+	var hit := space.intersect_ray(query)
+	if hit:
+		HitEffects.resolve(self, hit.collider, hit.position, hit.normal, MELEE_DAMAGE, dir * 5.0)

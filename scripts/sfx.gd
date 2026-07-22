@@ -8,6 +8,7 @@ var _gunshot: AudioStreamWAV
 var _acid: AudioStreamWAV
 var _click: AudioStreamWAV
 var _laser: AudioStreamWAV
+var _swing: AudioStreamWAV
 
 
 func _ready() -> void:
@@ -16,6 +17,12 @@ func _ready() -> void:
 	_acid = _make_acid()
 	_click = _make_click()
 	_laser = _make_laser()
+	_swing = _make_swing()
+
+
+## Melee swing: short air whoosh.
+func play_swing(pos: Vector3) -> void:
+	_play_at(_swing, pos, 8.0, true)
 
 
 ## Laser shot: descending zap + lingering beam hum.
@@ -191,6 +198,32 @@ func _make_laser() -> AudioStreamWAV:
 		var hum := sin(phase2) * 0.35 * clampf(t * 30.0, 0.0, 1.0) * exp(-t * 4.0)
 		var s := zap * 0.7 + hum
 		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 30000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+
+func _make_swing() -> AudioStreamWAV:
+	var rate := 22050
+	var dur := 0.22
+	var n := int(rate * dur)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 33
+	var prev := 0.0
+	for i in n:
+		var t := float(i) / rate
+		# Whoosh: low-passed noise whose brightness rises then falls,
+		# under a smooth amplitude hump
+		var hump := sin(PI * t / dur)
+		var alpha := 0.12 + 0.45 * hump
+		var noise := lerpf(prev, rng.randf_range(-1.0, 1.0), alpha)
+		prev = noise
+		data.encode_s16(i * 2, int(clampf(noise * hump * 0.9, -1.0, 1.0) * 28000.0))
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = rate
