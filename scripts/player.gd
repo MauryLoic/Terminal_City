@@ -11,6 +11,9 @@ const GRAVITY := 14.0
 const MOUSE_SENSITIVITY := 0.002
 const SHOOT_FORCE := 10.0
 const FIRE_RATE := 9.0   # bullets/second while firing (AK-like rate)
+const FOV_ZOOM := 48.0       # aimed-in field of view (right click held)
+const ZOOM_SPEED := 10.0     # FOV transition speed
+const ZOOM_SENS_FACTOR := 0.6  # mouse sensitivity multiplier while zoomed
 const LOCK_TIME := 1.2       # seconds of sustained aim for a full lock
 const SPREAD_MAX := 0.075    # spread (rad) without lock (~4.3 deg): you miss
 const SPREAD_MIN := 0.003    # spread at full lock (~0.17 deg)
@@ -59,6 +62,8 @@ var _burst_left := 0
 var _prev_fire_pressed := false
 var _lock := 0.0                 # aim lock progress (0..1)
 var _lock_target: Node3D = null
+var _zoomed := false
+var _fov_normal := 75.0          # captured from the camera in _ready
 
 
 func _ready() -> void:
@@ -67,13 +72,16 @@ func _ready() -> void:
 	spring_arm.add_excluded_object(get_rid())
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	_update_weapon_ui()
+	_fov_normal = camera.fov
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Mouse look
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
+		# Lower sensitivity while zoomed: aiming stays steady at low FOV
+		var sens := MOUSE_SENSITIVITY * (ZOOM_SENS_FACTOR if _zoomed else 1.0)
+		rotate_y(-event.relative.x * sens)
+		camera.rotate_x(-event.relative.y * sens)
 		camera.rotation.x = clampf(camera.rotation.x, -1.4, 1.4)
 
 	# Alt+E: toggle first person / third person (like Neocron)
@@ -115,6 +123,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			_fire_cd = 0.25   # small delay so the recapture click doesn't fire
 
+	# Right click held: aim zoom, with a selector click on zoom-in.
+	# Firing (left click) stays fully available while zoomed.
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT \
+			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		if event.pressed and not _zoomed:
+			_zoomed = true
+			Sfx.play_click()
+		elif not event.pressed:
+			_zoomed = false
+
 
 func _physics_process(delta: float) -> void:
 	# Gravity and jumping
@@ -131,6 +149,11 @@ func _physics_process(delta: float) -> void:
 		cap.height = 1.2 if crouching else 1.8
 		col_shape.position.y = 0.6 if crouching else 0.9
 	camera.position.y = lerpf(camera.position.y, 1.05 if crouching else 1.6, minf(delta * 10.0, 1.0))
+
+	# Aim zoom: smooth FOV transition, applied to both cameras (FP and TP)
+	var target_fov := FOV_ZOOM if _zoomed else _fov_normal
+	camera.fov = lerpf(camera.fov, target_fov, minf(delta * ZOOM_SPEED, 1.0))
+	tp_camera.fov = camera.fov
 
 	# ZQSD movement (physical WASD positions)
 	var dir := Vector3.ZERO
