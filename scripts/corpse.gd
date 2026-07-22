@@ -39,7 +39,7 @@ func _ready() -> void:
 		loot[id] = int(loot.get(id, 0)) + 1
 
 	_label = Label3D.new()
-	_label.text = "E : looter"
+	_label.text = "E: loot"
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.font_size = 40
 	_label.outline_size = 8

@@ -6,15 +6,15 @@ extends CanvasLayer
 
 const SLOTS := 16
 const ITEM_DEFS := {
-	"compo_canon": {"short": "Canon", "label": "Composant d'arme : canon"},
-	"compo_mecanisme": {"short": "Mécan.", "label": "Composant d'arme : mécanisme"},
-	"compo_chassis": {"short": "Châssis", "label": "Composant d'arme : châssis"},
-	"compo_medical": {"short": "Médic.", "label": "Composant médical"},
-	"junk": {"short": "Junk", "label": "Débris sans valeur (clic droit : jeter)"},
-	"medkit": {"short": "Soin", "label": "Trousse de soin (+40 PV)", "heal": 40.0},
-	"medkit_petit": {"short": "Soin S", "label": "Trousse de soin S (+25 PV)", "heal": 25.0},
-	"medkit_moyen": {"short": "Soin M", "label": "Trousse de soin M (+40 PV)", "heal": 40.0},
-	"medkit_grand": {"short": "Soin L", "label": "Trousse de soin L (+60 PV)", "heal": 60.0},
+	"compo_canon": {"short": "Barrel", "label": "Weapon component: barrel"},
+	"compo_mecanisme": {"short": "Mech.", "label": "Weapon component: mechanism"},
+	"compo_chassis": {"short": "Frame", "label": "Weapon component: frame"},
+	"compo_medical": {"short": "Med.", "label": "Medical component"},
+	"junk": {"short": "Junk", "label": "Worthless scrap (right click: drop)"},
+	"medkit": {"short": "Med", "label": "Medkit (+40 HP)", "heal": 40.0},
+	"medkit_petit": {"short": "Med S", "label": "Medkit S (+25 HP)", "heal": 25.0},
+	"medkit_moyen": {"short": "Med M", "label": "Medkit M (+40 HP)", "heal": 40.0},
+	"medkit_grand": {"short": "Med L", "label": "Medkit L (+60 HP)", "heal": 60.0},
 }
 
 const DroppedItemScript := preload("res://scripts/dropped_item.gd")
@@ -52,13 +52,13 @@ func _item_def(id: String) -> Dictionary:
 		var n := int(id.trim_prefix("ak_slots_"))
 		return {
 			"short": "AK [%d]" % n,
-			"label": "AK-47 artisanale — %d slot%s d'amélioration" % [n, "s" if n > 1 else ""],
+			"label": "Handcrafted AK-47 — %d upgrade slot%s" % [n, "s" if n > 1 else ""],
 		}
 	if id.begins_with("laser_slots_"):
 		var n := int(id.trim_prefix("laser_slots_"))
 		return {
 			"short": "Laser [%d]" % n,
-			"label": "Pistolet laser artisanal — %d slot%s d'amélioration (touche 2 pour l'équiper)" % [n, "s" if n > 1 else ""],
+			"label": "Handcrafted laser pistol — %d upgrade slot%s (press 2 to equip)" % [n, "s" if n > 1 else ""],
 		}
 	return {"short": id, "label": id}
 
@@ -72,7 +72,7 @@ func _refresh() -> void:
 			var d := _item_def(id)
 			b.text = "%s\nx%d" % [d.get("short", id), Inventory.items[id]]
 			b.disabled = false
-			b.tooltip_text = str(d.get("label", id)) + "\nClic droit : jeter"
+			b.tooltip_text = str(d.get("label", id)) + "\nRight click: drop"
 		else:
 			b.text = ""
 			b.disabled = true

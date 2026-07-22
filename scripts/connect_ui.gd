@@ -35,25 +35,25 @@ func _on_button_pressed() -> void:
 	var port := DEFAULT_PORT
 	if parts.size() > 1 and parts[1].is_valid_int():
 		port = int(parts[1])
-	set_status("Connexion à %s:%d..." % [host, port])
+	set_status("Connecting to %s:%d..." % [host, port])
 	connect_requested.emit(host, port, name_edit.text.strip_edges())
 
 
 func _on_net_connected(my_id: int, _world_seed: int) -> void:
 	_online = true
-	button.text = "Se déconnecter"
-	set_status("Connecté (id %d)" % my_id)
+	button.text = "Disconnect"
+	set_status("Connected (id %d)" % my_id)
 
 
 func _on_net_disconnected(reason: String) -> void:
 	_online = false
-	button.text = "Se connecter"
-	set_status("Hors ligne : %s" % reason)
+	button.text = "Connect"
+	set_status("Offline: %s" % reason)
 
 
 func _on_ping(ms: int) -> void:
 	if _online:
-		set_status("Connecté (id %d) — ping %d ms" % [Net.my_id, ms])
+		set_status("Connected (id %d) — ping %d ms" % [Net.my_id, ms])
 
 
 func _unhandled_input(event: InputEvent) -> void:

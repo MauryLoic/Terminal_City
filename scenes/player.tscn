@@ -119,7 +119,7 @@ offset_left = 16.0
 offset_top = -92.0
 offset_right = 250.0
 offset_bottom = -70.0
-text = "AK — RAFALE x3"
+text = "AK — BURST x3"
 
 [node name="MobBars" type="Control" parent="HUD"]
 anchor_right = 1.0

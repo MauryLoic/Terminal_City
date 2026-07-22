@@ -62,7 +62,7 @@ func disconnect_from_server(silent := false) -> void:
 	_joined = false
 	my_id = -1
 	if not silent:
-		disconnected.emit("déconnexion")
+		disconnected.emit("disconnected")
 
 
 ## Called by player.gd on every shot (no-op while offline).
@@ -91,7 +91,7 @@ func _process(delta: float) -> void:
 			if t - _last_recv > TIMEOUT:
 				_udp.close()
 				_active = false
-				disconnected.emit("serveur injoignable")
+				disconnected.emit("server unreachable")
 				return
 			_send_json({"t": "join", "name": _player_name, "v": 1})
 		return
@@ -102,7 +102,7 @@ func _process(delta: float) -> void:
 		_active = false
 		_joined = false
 		my_id = -1
-		disconnected.emit("timeout serveur")
+		disconnected.emit("server timeout")
 		return
 
 	# Local player position at a fixed tick

@@ -1,66 +1,79 @@
-# Terminal_City — client Godot 4
+# Terminal_City — Godot 4 client
 
-MMOFPS post-apocalyptique en cours de développement, inspiré des
-wastelands de Neocron : terrain irradié, rivière contaminée, faune
-mutante. Client Godot 4, serveur Akka/Pekko UDP (voir PROTOCOL.md).
+Post-apocalyptic MMOFPS in development, inspired by the Neocron
+wastelands: irradiated terrain, contaminated river, mutant wildlife.
+Godot 4 client, Akka/Pekko UDP server (see PROTOCOL.md).
 
-## Ouvrir et jouer
+## Open and play
 
-1. Godot 4.7 → **Importer** → sélectionner `project.godot`.
-2. F5. Le joueur apparaît sur la rive sud de la rivière.
+1. Godot 4.7 → **Import** → select `project.godot`.
+2. F5. The player spawns on the south bank of the river.
 
-## Contrôles
+## Controls
 
-| Touche          | Action                                        |
-|-----------------|-----------------------------------------------|
-| ZQSD            | Déplacement (keycodes physiques, AZERTY ok)   |
-| Souris          | Regarder — clic gauche maintenu : tir continu |
-| Espace          | Sauter                                        |
-| Shift           | Sprint (consomme l'endurance)                 |
-| Ctrl            | S'accroupir (maintenu)                        |
-| C               | S'accroupir (verrouillé)                      |
-| Alt+E           | Vue 1re / 3e personne                         |
-| I               | Inventaire                                    |
-| F1              | Panneau de connexion au serveur               |
-| Échap           | Libérer / recapturer la souris                |
+| Key             | Action                                          |
+|-----------------|-------------------------------------------------|
+| ZQSD / WASD     | Movement (physical keycodes, AZERTY-friendly)   |
+| Mouse           | Look — hold left click: fire                    |
+| Space           | Jump                                            |
+| Shift           | Sprint (drains stamina)                         |
+| Ctrl            | Crouch (hold)                                   |
+| C               | Crouch (toggle)                                 |
+| 1 / 2           | Switch weapon: AK / laser pistol (once crafted) |
+| E               | Loot a corpse nearby                            |
+| Alt+E           | First / third person view                       |
+| I               | Inventory                                       |
+| F1              | Server connection panel                         |
+| Escape          | Release / recapture the mouse                   |
 
-## Le monde
+## The world
 
-Généré procéduralement au chargement (`world_gen.gd`, seed fixe — même
-seed côté serveur = même monde pour tous). Terrain accidenté ceint de
-dunes-montagnes, rivière toxique (6 PV/s dedans !), bâtisses en pierre
-et cabanes abandonnées, arbres morts, rochers, débris.
+Procedurally generated at load time (`world_gen.gd`, fixed seed — same
+seed on the server = same world for everyone). Rugged terrain ringed by
+dune mountains, toxic river (6 HP/s inside!), stone buildings and
+abandoned shacks, dead trees, rocks, scattered junk.
 
-## Gameplay actuel
+## Current gameplay
 
-- Vie + endurance (le sprint draine, marcher régénère)
-- Système de matériaux : impacts visuels par surface (terre, pierre,
-  bois, métal, chair, acide), objets poussables selon leur masse,
-  destruction à trois vitesses (indestructible / lente / rapide)
-- Chauves-souris vampires en meutes de deux : passives en patrouille,
-  toute la meute attaque (crachats d'acide) si on approche ou tire ;
-  désengagement à distance ; loot de trousses de soin ; respawn 10 s
-- Inventaire en grille, perdu intégralement à la mort
-- Sons synthétisés en code (aucun asset audio)
+- Health + stamina (sprinting drains it, walking regenerates it)
+- Neocron-style aim lock: brackets tighten over 1.2 s of sustained aim;
+  spread and damage scale with the lock
+- Weapons: AK (3-round bursts) and craftable laser pistol (heavy
+  hitscan beam that stays visible 3 s, then cooldown)
+- Material system: per-surface impact visuals (dirt, stone, wood,
+  metal, flesh, acid), mass-based object pushing, three destruction
+  tiers (indestructible / slow / fast)
+- Vampire bats in packs of two: passive on patrol, the whole pack
+  attacks (acid spit) if approached or shot; disengages at distance
+- Lootable corpses (E key): weapon/medical components and junk;
+  despawn 60 s unlooted, 5 s after looting
+- Crafting window (gear wheel): laser pistol with random slots (0-5,
+  5 is rare) or S/M/L medkits; failure turns parts into junk
+- Grid inventory, right click to drop items on the ground (pickable
+  again, despawn 30 s); the whole inventory is lost on death
+- Floating health bars above mobs
+- All sounds synthesized in code (no audio assets)
 
-## Multijoueur
+## Multiplayer
 
-Client réseau UDP complet (`network_client.gd`, autoload `Net`) :
-join/welcome, positions à 20 Hz avec numéros de séquence, relai des
-tirs, ping, timeout. Les joueurs distants sont interpolés. Le serveur
-Akka/Pekko est à implémenter en miroir de **PROTOCOL.md**.
+Complete UDP network client (`network_client.gd`, `Net` autoload):
+join/welcome, 20 Hz positions with sequence numbers, shot relaying,
+ping, timeout. Remote players are interpolated. The Akka/Pekko server
+is to be implemented as a mirror of **PROTOCOL.md**.
 
 ## Structure
 
 ```
 project.godot
 scenes/    main, player, remote_player, ak47, private_eye, psi_monk,
-           connect_ui, inventory_ui
-scripts/   world_gen (terrain + props), player, bullet, impact, debris,
-           bat + bat_spawner + acid_glob + pickup, inventory (+ ui),
-           network_client, sfx, main, modèles (ak47, private_eye...)
+           connect_ui, inventory_ui, craft_ui
+scripts/   world_gen (terrain + props), player, bullet, laser_beam,
+           hit_effects, impact, debris, bat + bat_spawner + acid_glob,
+           corpse, pickup, dropped_item, inventory (+ ui), craft_ui,
+           mob_health_bars, target_reticle, network_client, sfx, main,
+           models (ak47, laser_pistol, private_eye, psi_monk)
 ```
 
-Tous les assets (3D et audio) sont générés en code — à remplacer
-progressivement par de vrais assets (glTF depuis Blender, samples .ogg)
-sans toucher à la logique.
+All assets (3D and audio) are generated in code — to be progressively
+replaced by real assets (glTF from Blender, .ogg samples) without
+touching the logic.

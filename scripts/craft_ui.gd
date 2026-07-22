@@ -7,23 +7,23 @@ extends CanvasLayer
 
 const RECIPES := [
 	{
-		"nom": "Pistolet laser artisanal",
+		"nom": "Handcrafted laser pistol",
 		"compos": {"compo_canon": 1, "compo_mecanisme": 1, "compo_chassis": 1},
 		"chance": 0.65,
 		"type": "arme",
 	},
 	{
-		"nom": "Trousse de soin",
+		"nom": "Medkit",
 		"compos": {"compo_medical": 2},
 		"chance": 0.75,
 		"type": "soin",
 	},
 ]
 const COMPO_NAMES := {
-	"compo_canon": "Canon",
-	"compo_mecanisme": "Mécanisme",
-	"compo_chassis": "Châssis",
-	"compo_medical": "Compo médical",
+	"compo_canon": "Barrel",
+	"compo_mecanisme": "Mechanism",
+	"compo_chassis": "Frame",
+	"compo_medical": "Medical comp.",
 }
 # Probabilities for slot count 0..5 (5-slot weapons are rare)
 const SLOT_WEIGHTS := [10, 25, 25, 20, 15, 5]
@@ -105,23 +105,23 @@ func _on_gear_pressed() -> void:
 			"arme":
 				var slots := _weighted(SLOT_WEIGHTS)
 				Inventory.add_item("laser_slots_%d" % slots)
-				result_label.text = "Réussite ! Pistolet laser [%d slot%s] — touche 2 pour l'équiper" \
+				result_label.text = "Success! Laser pistol [%d slot%s] — press 2 to equip" \
 						% [slots, "s" if slots > 1 else ""]
 			"soin":
 				var roll := randf()
 				var id := "medkit_petit"
-				var taille := "S (+25 PV)"
+				var taille := "S (+25 HP)"
 				if roll > 0.85:
 					id = "medkit_grand"
-					taille = "L (+60 PV)"
+					taille = "L (+60 HP)"
 				elif roll > 0.5:
 					id = "medkit_moyen"
-					taille = "M (+40 PV)"
+					taille = "M (+40 HP)"
 				Inventory.add_item(id)
-				result_label.text = "Réussite ! Trousse de soin %s" % taille
+				result_label.text = "Success! Medkit %s" % taille
 	else:
 		Inventory.add_item("junk")
-		result_label.text = "Échec de l'assemblage... les pièces finissent en junk."
+		result_label.text = "Assembly failed... the parts end up as junk."
 
 
 func _weighted(weights: Array) -> int:

@@ -98,7 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				Sfx.play_click()
 				_update_weapon_ui()
 			else:
-				fire_mode_label.text = "LASER : à construire d'abord"
+				fire_mode_label.text = "LASER: craft it first"
 
 
 	# Escape: release / recapture the mouse
@@ -312,7 +312,7 @@ func _owns_laser() -> bool:
 
 
 func _update_weapon_ui() -> void:
-	fire_mode_label.text = "AK — RAFALE x3" if weapon == Weapon.AK else "PISTOLET LASER"
+	fire_mode_label.text = "AK — BURST x3" if weapon == Weapon.AK else "LASER PISTOL"
 	_update_viewmodels()
 
 

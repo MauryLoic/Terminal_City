@@ -21,19 +21,19 @@ offset_bottom = -8.0
 theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Panel/VBox"]
-text = "Serveur (F1 : afficher/masquer)"
+text = "Server (F1: show/hide)"
 
 [node name="HostEdit" type="LineEdit" parent="Panel/VBox"]
 text = "127.0.0.1:4242"
-placeholder_text = "hôte:port"
+placeholder_text = "host:port"
 
 [node name="NameEdit" type="LineEdit" parent="Panel/VBox"]
 text = "Runner"
-placeholder_text = "Pseudo"
+placeholder_text = "Name"
 
 [node name="ConnectButton" type="Button" parent="Panel/VBox"]
-text = "Se connecter"
+text = "Connect"
 
 [node name="Status" type="Label" parent="Panel/VBox"]
-text = "Hors ligne"
+text = "Offline"
 autowrap_mode = 3

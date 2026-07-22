@@ -59,7 +59,7 @@ func _process(_delta: float) -> void:
 func _on_connect_requested(host: String, port: int, player_name: String) -> void:
 	var err := Net.connect_to_server(host, port, player_name)
 	if err != OK:
-		_ui.set_status("Erreur : %s" % error_string(err))
+		_ui.set_status("Error: %s" % error_string(err))
 
 
 func _on_connected(_my_id: int, world_seed: int) -> void:

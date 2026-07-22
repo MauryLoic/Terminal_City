@@ -22,7 +22,7 @@ offset_bottom = -10.0
 theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="Center/Panel/VBox"]
-text = "Inventaire  (I pour fermer)"
+text = "Inventory  (I to close)"
 horizontal_alignment = 1
 
 [node name="Grid" type="GridContainer" parent="Center/Panel/VBox"]
@@ -35,8 +35,8 @@ alignment = 1
 
 [node name="Craft" type="Button" parent="Center/Panel/VBox/Bottom"]
 custom_minimum_size = Vector2(160, 38)
-text = "⚙  Construction"
+text = "⚙  Crafting"
 
 [node name="Hint" type="Label" parent="Center/Panel/VBox"]
-text = "Clic droit sur un objet : jeter"
+text = "Right click an item: drop it"
 horizontal_alignment = 1
