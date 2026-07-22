@@ -1,10 +1,20 @@
 extends CanvasLayer
-## Grille d'inventaire (touche I). Cliquer sur une trousse de soin
-## l'utilise (+40 PV).
+## Grille d'inventaire (touche I).
+## - Clic gauche sur une trousse de soin : l'utiliser
+## - Clic droit sur n'importe quel objet : en jeter un (junk compris)
+## - Bouton roue crantée : ouvrir la fenêtre de construction
 
 const SLOTS := 16
 const ITEM_DEFS := {
-	"medkit": {"label": "Trousse de soin (+40 PV)", "short": "Soin", "usable": true},
+	"compo_canon": {"short": "Canon", "label": "Composant d'arme : canon"},
+	"compo_mecanisme": {"short": "Mécan.", "label": "Composant d'arme : mécanisme"},
+	"compo_chassis": {"short": "Châssis", "label": "Composant d'arme : châssis"},
+	"compo_medical": {"short": "Médic.", "label": "Composant médical"},
+	"junk": {"short": "Junk", "label": "Débris sans valeur (clic droit : jeter)"},
+	"medkit": {"short": "Soin", "label": "Trousse de soin (+40 PV)", "heal": 40.0},
+	"medkit_petit": {"short": "Soin S", "label": "Trousse de soin S (+25 PV)", "heal": 25.0},
+	"medkit_moyen": {"short": "Soin M", "label": "Trousse de soin M (+40 PV)", "heal": 40.0},
+	"medkit_grand": {"short": "Soin L", "label": "Trousse de soin L (+60 PV)", "heal": 60.0},
 }
 
 @onready var grid: GridContainer = $Center/Panel/VBox/Grid
@@ -13,16 +23,36 @@ var _slots: Array[Button] = []
 
 
 func _ready() -> void:
+	add_to_group("inventory_ui")
 	$Center.visible = false
 	for i in SLOTS:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(66, 66)
 		b.disabled = true
 		b.pressed.connect(_on_slot_pressed.bind(i))
+		b.gui_input.connect(_on_slot_gui_input.bind(i))
 		grid.add_child(b)
 		_slots.append(b)
+	$Center/Panel/VBox/Bottom/Craft.pressed.connect(_on_craft_pressed)
 	Inventory.changed.connect(_refresh)
 	_refresh()
+
+
+func is_open() -> bool:
+	return $Center.visible
+
+
+## Définition d'un objet, y compris les armes craftées "ak_slots_N".
+func _item_def(id: String) -> Dictionary:
+	if ITEM_DEFS.has(id):
+		return ITEM_DEFS[id]
+	if id.begins_with("ak_slots_"):
+		var n := int(id.trim_prefix("ak_slots_"))
+		return {
+			"short": "AK [%d]" % n,
+			"label": "AK-47 artisanale — %d slot%s d'amélioration" % [n, "s" if n > 1 else ""],
+		}
+	return {"short": id, "label": id}
 
 
 func _refresh() -> void:
@@ -31,10 +61,10 @@ func _refresh() -> void:
 		var b := _slots[i]
 		if i < ids.size():
 			var id: String = ids[i]
-			var d: Dictionary = ITEM_DEFS.get(id, {})
+			var d := _item_def(id)
 			b.text = "%s\nx%d" % [d.get("short", id), Inventory.items[id]]
-			b.disabled = not d.get("usable", false)
-			b.tooltip_text = d.get("label", id)
+			b.disabled = false
+			b.tooltip_text = str(d.get("label", id)) + "\nClic droit : jeter"
 		else:
 			b.text = ""
 			b.disabled = true
@@ -46,11 +76,27 @@ func _on_slot_pressed(i: int) -> void:
 	if i >= ids.size():
 		return
 	var id: String = ids[i]
-	if id == "medkit":
+	var d := _item_def(id)
+	if d.has("heal"):
 		var player := get_tree().get_first_node_in_group("player")
 		if player and player.health < player.MAX_HEALTH \
-				and Inventory.remove_item("medkit"):
-			player.heal(40.0)
+				and Inventory.remove_item(id):
+			player.heal(d.heal)
+
+
+## Clic droit : jeter une unité de l'objet (junk ou autre).
+func _on_slot_gui_input(event: InputEvent, i: int) -> void:
+	if event is InputEventMouseButton and event.pressed \
+			and event.button_index == MOUSE_BUTTON_RIGHT:
+		var ids := Inventory.items.keys()
+		if i < ids.size():
+			Inventory.remove_item(ids[i])
+
+
+func _on_craft_pressed() -> void:
+	var craft := get_tree().get_first_node_in_group("craft_ui")
+	if craft:
+		craft.open()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -60,4 +106,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if $Center.visible:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
+			# Fermer aussi la construction, puis recapturer la souris
+			var craft := get_tree().get_first_node_in_group("craft_ui")
+			if craft and craft.is_open():
+				craft.close()
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)

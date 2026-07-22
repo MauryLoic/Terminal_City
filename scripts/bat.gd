@@ -15,7 +15,7 @@ const ATTACK_RANGE := 30.0
 const AGGRO_RANGE := 9.0     # distance de déclenchement
 const LOSE_RANGE := 45.0     # distance de désengagement
 const AcidScript := preload("res://scripts/acid_glob.gd")
-const PickupScript := preload("res://scripts/pickup.gd")
+const CorpseScript := preload("res://scripts/corpse.gd")
 
 var pack_id := 0             # les membres d'une même meute partagent cet id
 var home := Vector3.ZERO     # centre de patrouille (posé par le spawner)
@@ -129,15 +129,15 @@ func _spit_acid(target: Vector3) -> void:
 	Sfx.play_acid(global_position)
 
 
-## Appelé par bullet.gd juste avant la destruction : loot + signal
-## pour que le spawner programme la réapparition.
+## Appelé par bullet.gd juste avant la destruction : la bête tombe du
+## ciel en corps lootable (composants / junk), et le spawner est
+## prévenu pour programmer la réapparition.
 func on_destroyed() -> void:
-	if randf() < 0.6:
-		var pk := Area3D.new()
-		pk.set_script(PickupScript)
-		pk.item_id = "medkit"
-		pk.position = global_position
-		get_tree().current_scene.add_child(pk)
+	var corpse := RigidBody3D.new()
+	corpse.set_script(CorpseScript)
+	corpse.position = global_position
+	get_tree().current_scene.add_child(corpse)
+	corpse.linear_velocity = Vector3(randf_range(-1.5, 1.5), -2.0, randf_range(-1.5, 1.5))
 	died.emit(global_position)
 
 

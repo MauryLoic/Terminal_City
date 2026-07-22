@@ -11,6 +11,9 @@ const GRAVITY := 14.0
 const MOUSE_SENSITIVITY := 0.002
 const SHOOT_FORCE := 10.0
 const FIRE_RATE := 9.0   # balles/seconde en tir maintenu (cadence type AK)
+const LOCK_TIME := 1.2       # secondes de visée maintenue pour le lock complet
+const SPREAD_MAX := 0.075    # dispersion (rad) sans lock (~4.3 deg) : on rate
+const SPREAD_MIN := 0.003    # dispersion au lock complet (~0.17 deg)
 
 const MAX_HEALTH := 100.0
 const MAX_STAMINA := 100.0
@@ -31,6 +34,7 @@ const BulletScript := preload("res://scripts/bullet.gd")
 @onready var col_shape: CollisionShape3D = $CollisionShape3D
 @onready var health_bar: ProgressBar = $HUD/Bars/HealthBar
 @onready var stamina_bar: ProgressBar = $HUD/Bars/StaminaBar
+@onready var reticle: Control = $HUD/Reticle
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
@@ -41,6 +45,10 @@ var crouching := false
 var _crouch_toggled := false
 var _can_sprint := true
 var _fire_cd := 0.0
+var _burst_left := 0
+var _prev_fire_pressed := false
+var _lock := 0.0                 # progression du lock de visée (0..1)
+var _lock_target: Node3D = null
 
 
 func _ready() -> void:
@@ -66,6 +74,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_C:
 		_crouch_toggled = not _crouch_toggled
+
 
 	# Echap : libérer / recapturer la souris
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
@@ -146,13 +155,39 @@ func _physics_process(delta: float) -> void:
 	health_bar.value = health
 	stamina_bar.value = stamina
 
-	# Tir continu : clic gauche maintenu, cadence FIRE_RATE
+	# Réticule façon Neocron : crochets autour de l'ennemi sous le viseur
+	var aimed: Node3D = null
+	if ray.is_colliding():
+		var c := ray.get_collider()
+		if c is Node3D and c.is_in_group("bat"):
+			aimed = c
+	# Lock progressif : la visée maintenue sur la même cible resserre le
+	# réticule et la dispersion. Quitter la cible fait décroître le lock
+	# rapidement (un bref écart ne remet pas tout à zéro).
+	if aimed != null:
+		if aimed != _lock_target:
+			_lock_target = aimed
+			_lock = 0.0
+		_lock = minf(_lock + delta / LOCK_TIME, 1.0)
+	else:
+		_lock = maxf(_lock - delta * 2.5, 0.0)
+		if _lock == 0.0:
+			_lock_target = null
+	reticle.target = aimed
+	reticle.lock_ratio = _lock
+
+	# Tir : uniquement par rafales de 3 balles (un clic = une rafale)
 	_fire_cd = maxf(_fire_cd - delta, 0.0)
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
-			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED \
-			and _fire_cd == 0.0:
-		_fire_cd = 1.0 / FIRE_RATE
+	var fire_pressed := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
+			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
+	if fire_pressed and not _prev_fire_pressed \
+			and _burst_left == 0 and _fire_cd == 0.0:
+		_burst_left = 3
+	if _burst_left > 0 and _fire_cd == 0.0:
+		_burst_left -= 1
+		_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
 		_shoot()
+	_prev_fire_pressed = fire_pressed
 
 
 func _shoot() -> void:
@@ -163,26 +198,42 @@ func _shoot() -> void:
 		muzzle = visual.get_node("AK47/Muzzle").global_position
 	else:
 		muzzle = camera.global_transform * Vector3(0.2, -0.2, -0.7)
-	var aim_dir := -camera.global_transform.basis.z
+	# Dispersion : cône aléatoire dont l'angle se resserre avec le lock.
+	# Sans lock, l'AK arrose (~2.6 deg) ; visée maintenue = balles précises.
+	var spread := lerpf(SPREAD_MAX, SPREAD_MIN, _lock)
+	var ang := randf_range(0.0, TAU)
+	var dev := randf() * spread
+	var b := camera.global_transform.basis
+	var aim_dir := (-b.z + b.x * cos(ang) * dev + b.y * sin(ang) * dev).normalized()
 
 	Sfx.play_gunshot(muzzle)
 
 	# En ligne : notifier le serveur (les autres clients rejoueront le tir)
 	Net.send_shoot(muzzle, aim_dir)
 
+	# Raycast le long de la direction déviée (le RayCast3D du centre-écran
+	# ne sert plus qu'à la détection de cible du réticule)
+	var from: Vector3 = camera.global_position
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, from + aim_dir * 100.0)
+	query.exclude = [get_rid()]
+	var hit := space.intersect_ray(query)
+
 	var target: Vector3
 	var normal := Vector3.ZERO
 	var collider: Object = null
-	if ray.is_colliding():
-		target = ray.get_collision_point()
-		normal = ray.get_collision_normal()
-		collider = ray.get_collider()
+	if hit:
+		target = hit.position
+		normal = hit.normal
+		collider = hit.collider
 	else:
 		# Tir dans le vide : la balle vole tout droit sur 100 m puis disparaît
-		target = camera.global_position + aim_dir * 100.0
+		target = from + aim_dir * 100.0
 
 	var bullet := BulletScript.new()
 	bullet.setup(muzzle, target, normal, collider, aim_dir * SHOOT_FORCE)
+	# Sans lock, les balles qui touchent quand même font moitié moins mal
+	bullet.damage = lerpf(0.5, 1.0, _lock)
 	get_tree().current_scene.add_child(bullet)
 
 

@@ -6,6 +6,8 @@ const SPEED := 70.0
 const ImpactScript := preload("res://scripts/impact.gd")
 const DebrisScript := preload("res://scripts/debris.gd")
 
+var damage := 1.0   # dégâts de cette balle (réduits sans lock de visée)
+
 var _start: Vector3
 var _target: Vector3
 var _normal: Vector3
@@ -74,7 +76,7 @@ func _on_arrive() -> void:
 			if _collider.has_meta("hp"):
 				if _collider.has_method("on_hit"):
 					_collider.on_hit()
-				var hp: float = _collider.get_meta("hp") - 1.0
+				var hp: float = _collider.get_meta("hp") - damage
 				if hp <= 0.0:
 					_destroy(_collider)
 				else:

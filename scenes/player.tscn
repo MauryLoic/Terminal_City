@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ak47.tscn" id="2_ak"]
 [ext_resource type="PackedScene" path="res://scenes/private_eye.tscn" id="3_monk"]
+[ext_resource type="Script" path="res://scripts/target_reticle.gd" id="4_reticle"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -97,3 +98,18 @@ value = 100.0
 show_percentage = false
 theme_override_styles/background = SubResource("StyleBoxFlat_barbg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_stamina")
+
+[node name="Reticle" type="Control" parent="HUD"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("4_reticle")
+
+[node name="FireMode" type="Label" parent="HUD"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -92.0
+offset_right = 250.0
+offset_bottom = -70.0
+text = "RAFALE x3"

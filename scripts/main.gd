@@ -33,8 +33,9 @@ func _ready() -> void:
 	_ui.connect_requested.connect(_on_connect_requested)
 	_ui.disconnect_requested.connect(Net.disconnect_from_server)
 
-	# Inventaire (touche I) et faune hostile
+	# Inventaire (touche I), construction et faune hostile
 	add_child(preload("res://scenes/inventory_ui.tscn").instantiate())
+	add_child(preload("res://scenes/craft_ui.tscn").instantiate())
 	var spawner := Node.new()
 	spawner.set_script(preload("res://scripts/bat_spawner.gd"))
 	add_child(spawner)

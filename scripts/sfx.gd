@@ -6,12 +6,25 @@ extends Node
 var _explosion: AudioStreamWAV
 var _gunshot: AudioStreamWAV
 var _acid: AudioStreamWAV
+var _click: AudioStreamWAV
 
 
 func _ready() -> void:
 	_explosion = _make_explosion()
 	_gunshot = _make_gunshot()
 	_acid = _make_acid()
+	_click = _make_click()
+
+
+## Clic mécanique (sélecteur de tir) : non positionnel, joué "dans
+## l'oreille" du joueur.
+func play_click() -> void:
+	var p := AudioStreamPlayer.new()
+	p.stream = _click
+	p.volume_db = -6.0
+	add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
 
 
 ## Explosion / destruction : bruit sec + thump grave descendant.
@@ -119,6 +132,30 @@ func _make_acid() -> AudioStreamWAV:
 		phase += TAU * freq / rate
 		var s := (sin(phase) * 0.7 + rng.randf_range(-1.0, 1.0) * 0.18) * env
 		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 30000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+
+func _make_click() -> AudioStreamWAV:
+	var rate := 22050
+	var dur := 0.06
+	var n := int(rate * dur)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	for i in n:
+		var t := float(i) / rate
+		# Deux impulsions très brèves : le "clic-clac" d'un sélecteur
+		var s := sin(TAU * 2400.0 * t) * exp(-t * 320.0) * 0.8
+		if t > 0.025:
+			s += sin(TAU * 1700.0 * (t - 0.025)) * exp(-(t - 0.025) * 380.0) * 0.55
+		s += rng.randf_range(-1.0, 1.0) * exp(-t * 400.0) * 0.25
+		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 28000.0))
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = rate
