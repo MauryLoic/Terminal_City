@@ -35,6 +35,9 @@ const LASER_COOLDOWN := 3.0   # the beam stays visible 3 s before the next shot
 const MELEE_DAMAGE := 1.5
 const MELEE_RANGE := 2.4
 const MELEE_COOLDOWN := 0.7
+const SABER_DAMAGE := 4.0
+const SABER_RANGE := 2.8
+const BURN_DPS := 6.0        # blue bat fire ray: damage per second
 
 const BulletScript := preload("res://scripts/bullet.gd")
 const LaserBeamScript := preload("res://scripts/laser_beam.gd")
@@ -53,6 +56,7 @@ const HitEffects := preload("res://scripts/hit_effects.gd")
 @onready var fire_mode_label: Label = $HUD/FireMode
 @onready var laser_gun: Node3D = $Camera3D/LaserGun
 @onready var crowbar: Node3D = $Camera3D/Crowbar
+@onready var saber: Node3D = $Camera3D/Saber
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
@@ -68,6 +72,8 @@ enum Weapon { AK, LASER, MELEE }
 var weapon: int = Weapon.AK
 var _laser_cd := 0.0
 var _melee_cd := 0.0
+var _burn_t := 0.0
+var _burn_overlay: ColorRect
 var _burst_left := 0
 var _prev_fire_pressed := false
 var _lock := 0.0                 # aim lock progress (0..1)
@@ -85,6 +91,16 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	_update_weapon_ui()
 	_fov_normal = camera.fov
+	# Refresh weapon HUD/viewmodel when the inventory changes (e.g. the
+	# laser saber just got crafted while melee is equipped)
+	Inventory.changed.connect(_update_weapon_ui)
+	# Screen tint shown while burning
+	_burn_overlay = ColorRect.new()
+	_burn_overlay.color = Color(1.0, 0.35, 0.05, 0.22)
+	_burn_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_burn_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_burn_overlay.visible = false
+	$HUD.add_child(_burn_overlay)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -215,6 +231,14 @@ func _physics_process(delta: float) -> void:
 		health -= POISON_DPS * delta
 		if health <= 0.0:
 			_die()
+
+	# Burning (blue bat fire ray): damage over time + screen tint
+	if _burn_t > 0.0:
+		_burn_t -= delta
+		health -= BURN_DPS * delta
+		if health <= 0.0:
+			_die()
+	_burn_overlay.visible = _burn_t > 0.0
 
 	health_bar.value = health
 	stamina_bar.value = stamina
@@ -389,14 +413,17 @@ func _update_weapon_ui() -> void:
 	elif weapon == Weapon.LASER:
 		fire_mode_label.text = "LASER PISTOL — CELLS %d" % laser_ammo
 	else:
-		fire_mode_label.text = "CROWBAR — MELEE"
+		fire_mode_label.text = "LASER SABER — MELEE" if _owns_saber() else "CROWBAR — MELEE"
 	_update_viewmodels()
 
 
 func _update_viewmodels() -> void:
 	fp_gun.visible = not third_person and weapon == Weapon.AK
 	laser_gun.visible = not third_person and weapon == Weapon.LASER
-	crowbar.visible = not third_person and weapon == Weapon.MELEE
+	var melee := not third_person and weapon == Weapon.MELEE
+	var has_saber := _owns_saber()
+	crowbar.visible = melee and not has_saber
+	saber.visible = melee and has_saber
 
 
 ## Laser shot: precise hitscan beam, heavy damage, visible 3 seconds.
@@ -430,13 +457,27 @@ func _shoot_laser() -> void:
 ## Guarantees the recovery loop: crowbar -> warbots -> resources ->
 ## ammo crafting, even with completely empty magazines.
 func _melee_attack() -> void:
-	crowbar.swing()
+	var has_saber := _owns_saber()
+	var vm: Node3D = saber if has_saber else crowbar
+	vm.swing()
 	Sfx.play_swing(camera.global_position)
 	var from: Vector3 = camera.global_position
 	var dir: Vector3 = -camera.global_transform.basis.z
+	var reach := SABER_RANGE if has_saber else MELEE_RANGE
+	var dmg := SABER_DAMAGE if has_saber else MELEE_DAMAGE
 	var space := get_world_3d().direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(from, from + dir * MELEE_RANGE)
+	var query := PhysicsRayQueryParameters3D.create(from, from + dir * reach)
 	query.exclude = [get_rid()]
 	var hit := space.intersect_ray(query)
 	if hit:
-		HitEffects.resolve(self, hit.collider, hit.position, hit.normal, MELEE_DAMAGE, dir * 5.0)
+		HitEffects.resolve(self, hit.collider, hit.position, hit.normal, dmg, dir * 5.0)
+
+
+func _owns_saber() -> bool:
+	return int(Inventory.items.get("saber", 0)) > 0
+
+
+## Fire ray hit (blue bat): burn for the given duration (stacks by
+## extending, not adding).
+func apply_burn(duration := 3.0) -> void:
+	_burn_t = maxf(_burn_t, duration)

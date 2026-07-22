@@ -14,6 +14,8 @@ const ITEM_DEFS := {
 	"res_metal": {"short": "Scrap", "label": "Metal scraps (warbot)"},
 	"res_powder": {"short": "Powder", "label": "Chemical powder (warbot)"},
 	"res_cell": {"short": "E-core", "label": "Energy core (warbot)"},
+	"saber_part": {"short": "Saber pt", "label": "Laser saber part (blue bat) — 10 needed"},
+	"saber": {"short": "Saber", "label": "Laser saber — your melee weapon (key 3)"},
 	"junk": {"short": "Junk", "label": "Worthless scrap (right click: drop)"},
 	"medkit": {"short": "Med", "label": "Medkit (+40 HP)", "heal": 40.0},
 	"medkit_petit": {"short": "Med S", "label": "Medkit S (+25 HP)", "heal": 25.0},

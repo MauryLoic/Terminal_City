@@ -7,6 +7,7 @@ const HitEffects := preload("res://scripts/hit_effects.gd")
 const DURATION := 3.0
 
 var damage := 3.0
+var duration := DURATION   # visual persistence (overridable per shot)
 
 var _from: Vector3
 var _to: Vector3
@@ -53,9 +54,9 @@ func _ready() -> void:
 
 	# Gradual fade over the whole duration, then removal
 	var tw := create_tween()
-	tw.tween_property(mat, "albedo_color:a", 0.0, DURATION)
-	tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.0, DURATION)
-	get_tree().create_timer(DURATION).timeout.connect(queue_free)
+	tw.tween_property(mat, "albedo_color:a", 0.0, duration)
+	tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.0, duration)
+	get_tree().create_timer(duration).timeout.connect(queue_free)
 
 
 func _basis_y(y_dir: Vector3) -> Basis:
