@@ -14,7 +14,7 @@ const RECIPES := [
 	},
 	{
 		"nom": "Medkit",
-		"compos": {"compo_medical": 2},
+		"compos": {"compo_medical": 1, "compo_organic": 1},
 		"chance": 0.75,
 		"type": "soin",
 	},
@@ -36,6 +36,7 @@ const COMPO_NAMES := {
 	"compo_mecanisme": "Mechanism",
 	"compo_chassis": "Frame",
 	"compo_medical": "Medical comp.",
+	"compo_organic": "Organic gland",
 	"res_metal": "Scrap",
 	"res_powder": "Powder",
 	"res_cell": "E-core",

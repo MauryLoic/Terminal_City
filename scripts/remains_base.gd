@@ -1,21 +1,17 @@
 extends RigidBody3D
-## Corpse of a downed bat: falls from the sky with physics,
-## stays on the ground and can be looted (E key when close).
+## Generic lootable remains base class: settles on the ground, can be
+## looted (E key when close), then despawns. Subclasses override
+## _build_model() / _setup_collision() and set loot_table / rolls.
 ## - Not looted: vanishes after 60 s.
-## - Looted: the empty corpse remains 5 more seconds then vanishes.
-## Loot contains weapon components or junk (medkit parts now
-## come from mutant ants),
-## never finished items.
+## - Looted: the empty remains stay 5 more seconds then vanish.
 
-const LOOT_TABLE := [
-	["compo_canon", 24],
-	["compo_mecanisme", 24],
-	["compo_chassis", 24],
-	["junk", 28],
-]
-const LOOT_RANGE := 2.6
+const LOOT_RANGE := 2.8
 const LIFE_UNLOOTED := 60.0
 const LIFE_AFTER_LOOT := 5.0
+
+var loot_table: Array = [["junk", 1]]
+var rolls := 1
+var label_height := 0.8
 
 var loot := {}
 var _looted := false
@@ -24,16 +20,9 @@ var _label: Label3D
 
 
 func _ready() -> void:
-	mass = 3.0
 	_build_model()
-	var cs := CollisionShape3D.new()
-	var sp := SphereShape3D.new()
-	sp.radius = 0.32
-	cs.shape = sp
-	add_child(cs)
+	_setup_collision()
 
-	# Loot generation: 1 or 2 weighted rolls
-	var rolls := 1 + (1 if randf() < 0.5 else 0)
 	for i in rolls:
 		var id := _weighted_pick()
 		loot[id] = int(loot.get(id, 0)) + 1
@@ -43,11 +32,23 @@ func _ready() -> void:
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.font_size = 40
 	_label.outline_size = 8
-	_label.position.y = 0.9
+	_label.position.y = label_height
 	_label.visible = false
 	add_child(_label)
 
-	angular_velocity = Vector3(randf_range(-3, 3), 0, randf_range(-3, 3))
+
+## Override: visual model of the remains.
+func _build_model() -> void:
+	pass
+
+
+## Override if needed: physics shape.
+func _setup_collision() -> void:
+	var cs := CollisionShape3D.new()
+	var sp := SphereShape3D.new()
+	sp.radius = 0.3
+	cs.shape = sp
+	add_child(cs)
 
 
 func _physics_process(delta: float) -> void:
@@ -78,39 +79,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _weighted_pick() -> String:
 	var total := 0
-	for entry in LOOT_TABLE:
+	for entry in loot_table:
 		total += entry[1]
 	var r := randi_range(1, total)
-	for entry in LOOT_TABLE:
+	for entry in loot_table:
 		r -= entry[1]
 		if r <= 0:
 			return entry[0]
 	return "junk"
-
-
-## Model: the lifeless beast, wings slumped.
-func _build_model() -> void:
-	var fur := StandardMaterial3D.new()
-	fur.albedo_color = Color(0.2, 0.15, 0.13)
-	fur.roughness = 1.0
-	var membrane := StandardMaterial3D.new()
-	membrane.albedo_color = Color(0.12, 0.08, 0.08)
-	membrane.roughness = 1.0
-
-	var body := MeshInstance3D.new()
-	var bm := SphereMesh.new()
-	bm.radius = 0.3
-	bm.height = 0.38
-	bm.material = fur
-	body.mesh = bm
-	add_child(body)
-
-	for side: float in [-1.0, 1.0]:
-		var wing := MeshInstance3D.new()
-		var wm := BoxMesh.new()
-		wm.size = Vector3(0.95, 0.02, 0.5)
-		wm.material = membrane
-		wing.mesh = wm
-		wing.position = Vector3(side * 0.6, -0.05, 0)
-		wing.rotation.z = side * -0.25
-		add_child(wing)
