@@ -43,6 +43,7 @@ func _ready() -> void:
 	set_meta("debris_color", Color(0.25, 0.18, 0.16))
 	set_meta("debris_count", 8)
 	set_meta("debris_size", 0.1)
+	set_meta("xp", 90)
 	if home == Vector3.ZERO:
 		home = global_position
 	_build_model()

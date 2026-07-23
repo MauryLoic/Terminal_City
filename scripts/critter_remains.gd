@@ -1,16 +1,18 @@
 extends "res://scripts/remains_base.gd"
-## Squashed critter: drops medkit components (the safe level-1 loot).
+## Squashed critter: drops medkit components and spent casings — the
+## safe level-1 economy (healing and pistol ammo).
 
 var blob_color := Color(0.3, 0.18, 0.1)
 
 
 func _init() -> void:
 	loot_table = [
-		["compo_medical", 40],
-		["compo_organic", 40],
-		["junk", 20],
+		["compo_medical", 34],
+		["compo_organic", 34],
+		["res_casing", 26],
+		["junk", 6],
 	]
-	rolls = 1
+	rolls = 2
 	label_height = 0.5
 
 

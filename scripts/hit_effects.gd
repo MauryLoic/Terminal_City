@@ -44,6 +44,11 @@ static func _destroy_object(ctx: Node, obj: Node3D) -> void:
 	debris.position = obj.global_position
 	ctx.get_tree().current_scene.add_child(debris)
 	Sfx.play_explosion(obj.global_position)
+	# Experience reward for the player
+	if obj.has_meta("xp"):
+		var player := ctx.get_tree().get_first_node_in_group("player")
+		if player and player.has_method("gain_xp"):
+			player.gain_xp(int(obj.get_meta("xp")))
 	if obj.has_method("on_destroyed"):
 		obj.on_destroyed()
 	obj.queue_free()

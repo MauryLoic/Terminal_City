@@ -7,6 +7,7 @@ const LIFETIME := 30.0
 const PICKUP_DELAY := 1.5
 
 var item_id := "junk"
+var lifetime := LIFETIME   # death drops last much longer than manual ones
 
 var _t := 0.0
 var _base_y := 0.0
@@ -44,7 +45,7 @@ func _ready() -> void:
 	add_child(label)
 
 	body_entered.connect(_on_body)
-	get_tree().create_timer(LIFETIME).timeout.connect(queue_free)
+	get_tree().create_timer(lifetime).timeout.connect(queue_free)
 
 
 func _process(delta: float) -> void:

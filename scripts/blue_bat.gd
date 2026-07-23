@@ -19,6 +19,7 @@ func _ready() -> void:
 	pack_id = -1        # loner: pack alerts don't concern it
 	aggro = true        # it spawned because of you — it knows
 	_fur.albedo_color = Color(0.16, 0.28, 0.6)
+	set_meta("xp", 400)
 
 
 ## Attack override: 50% regular acid glob, 50% fire ray.

@@ -23,7 +23,7 @@ func _spawn() -> void:
 		var x := randf_range(-HALF, HALF)
 		var z := randf_range(-HALF, HALF)
 		var h: float = world.get_height(x, z)
-		if h <= world.WATER_Y + 1.0:
+		if h <= world.WATER_Y + 1.0 or world._in_base_area(x, z):
 			continue
 		var bot := CharacterBody3D.new()
 		bot.set_script(WarbotScript)

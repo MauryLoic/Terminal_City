@@ -41,6 +41,7 @@ func _ready() -> void:
 	set_meta("debris_color", Color(0.35, 0.37, 0.34))
 	set_meta("debris_count", 14)
 	set_meta("debris_size", 0.2)
+	set_meta("xp", 150)
 	if home == Vector3.ZERO:
 		home = global_position
 	_wander_target = home

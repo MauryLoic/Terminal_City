@@ -14,10 +14,12 @@ const ITEM_DEFS := {
 	"res_metal": {"short": "Scrap", "label": "Metal scraps (warbot)"},
 	"res_powder": {"short": "Powder", "label": "Chemical powder (warbot)"},
 	"res_cell": {"short": "E-core", "label": "Energy core (warbot)"},
+	"res_casing": {"short": "Casing", "label": "Spent casings (base critters) — pistol ammo"},
+	"pistol": {"short": "Pistol", "label": "Crude pistol — click to equip", "equip": "pistol"},
 	"ak_part": {"short": "AK part", "label": "AK-47 part (warbot) — 10 needed"},
-	"ak": {"short": "AK-47", "label": "AK-47 assault rifle — key 1"},
+	"ak": {"short": "AK-47", "label": "AK-47 assault rifle — click to equip", "equip": "ak"},
 	"saber_part": {"short": "Saber pt", "label": "Laser saber part (blue bat) — 10 needed"},
-	"saber": {"short": "Saber", "label": "Laser saber — your melee weapon (key 3)"},
+	"saber": {"short": "Saber", "label": "Laser saber — click to equip (melee)", "equip": "melee"},
 	"junk": {"short": "Junk", "label": "Worthless scrap (right click: drop)"},
 	"medkit": {"short": "Med", "label": "Medkit (+40 HP)", "heal": 40.0},
 	"medkit_petit": {"short": "Med S", "label": "Medkit S (+40 HP)", "heal": 40.0},
@@ -66,7 +68,8 @@ func _item_def(id: String) -> Dictionary:
 		var n := int(id.trim_prefix("laser_slots_"))
 		return {
 			"short": "Laser [%d]" % n,
-			"label": "Handcrafted laser pistol — %d upgrade slot%s (press 2 to equip)" % [n, "s" if n > 1 else ""],
+			"label": "Handcrafted laser pistol — %d upgrade slot%s (click to equip)" % [n, "s" if n > 1 else ""],
+			"equip": "laser",
 		}
 	return {"short": id, "label": id}
 
@@ -95,9 +98,14 @@ func _on_slot_pressed(i: int) -> void:
 	var d := _item_def(id)
 	if d.has("heal"):
 		var player := get_tree().get_first_node_in_group("player")
-		if player and player.health < player.MAX_HEALTH \
+		if player and player.health < player.max_health() \
 				and Inventory.remove_item(id):
 			player.heal(d.heal)
+	elif d.has("equip"):
+		# Weapons: clicking equips them on the first free key slot
+		var player := get_tree().get_first_node_in_group("player")
+		if player:
+			player.equip_weapon(str(d.equip))
 
 
 ## Right click: drop one unit of the item — it appears on the ground in

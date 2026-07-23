@@ -11,10 +11,15 @@ const GRAVITY := 14.0
 const MOUSE_SENSITIVITY := 0.002
 const SHOOT_FORCE := 10.0
 const FIRE_RATE := 9.0   # bullets/second while firing (AK-like rate)
-const AK_AMMO_START := 100
-const LASER_AMMO_START := 6
-const AK_AMMO_RESPAWN := 30     # given back on death so you can still fight
-const LASER_AMMO_RESPAWN := 2
+const AK_AMMO_START := 0        # the AK is crafted, and so are its rounds
+const LASER_AMMO_START := 0
+const AK_AMMO_RESPAWN := 15     # given back on death so you can still fight
+const LASER_AMMO_RESPAWN := 1
+const PISTOL_AMMO_RESPAWN := 15
+const PISTOL_FIRE_CD := 0.35    # semi-auto: one shot per click
+const PISTOL_SPREAD_MAX := 0.09
+const PISTOL_SPREAD_MIN := 0.012
+const MAX_LEVEL := 30
 const FOV_ZOOM := 48.0       # aimed-in field of view (right click held)
 const ZOOM_SPEED := 10.0     # FOV transition speed
 const ZOOM_SENS_FACTOR := 0.6  # mouse sensitivity multiplier while zoomed
@@ -42,6 +47,9 @@ const BURN_DPS := 6.0        # blue bat fire ray: damage per second
 const BulletScript := preload("res://scripts/bullet.gd")
 const LaserBeamScript := preload("res://scripts/laser_beam.gd")
 const HitEffects := preload("res://scripts/hit_effects.gd")
+const DroppedItemScript := preload("res://scripts/dropped_item.gd")
+const DEATH_DROP_CHANCE := 0.5   # per item unit
+const DEATH_DROP_LIFETIME := 240.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
@@ -57,6 +65,9 @@ const HitEffects := preload("res://scripts/hit_effects.gd")
 @onready var laser_gun: Node3D = $Camera3D/LaserGun
 @onready var knife: Node3D = $Camera3D/Knife
 @onready var saber: Node3D = $Camera3D/Saber
+@onready var pistol_gun: Node3D = $Camera3D/PistolGun
+@onready var level_label: Label = $HUD/Bars/LevelLabel
+@onready var xp_bar: ProgressBar = $HUD/Bars/XpBar
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
@@ -68,9 +79,15 @@ var crouching := false
 var _crouch_toggled := false
 var _can_sprint := true
 var _fire_cd := 0.0
-enum Weapon { AK, LASER, MELEE }
+# Weapon slots: keys 1..5 map to this list in order. The rusty knife
+# occupies slot 1 from the start; every other weapon is appended by
+# clicking it in the inventory (equip_weapon), taking the first free key.
+var weapons: Array[String] = ["melee"]
+var weapon_idx := 0
 
-var weapon: int = Weapon.MELEE   # level 1 starts with the rusty knife
+# Player progression
+var level := 1
+var xp := 0
 var _laser_cd := 0.0
 var _melee_cd := 0.0
 var _burn_t := 0.0
@@ -81,6 +98,7 @@ var _lock := 0.0                 # aim lock progress (0..1)
 var _lock_target: Node3D = null
 var ak_ammo := AK_AMMO_START
 var laser_ammo := LASER_AMMO_START
+var pistol_ammo := 0
 var _zoomed := false
 var _fov_normal := 75.0          # captured from the camera in _ready
 
@@ -95,6 +113,7 @@ func _ready() -> void:
 	# Refresh weapon HUD/viewmodel when the inventory changes (e.g. the
 	# laser saber just got crafted while melee is equipped)
 	Inventory.changed.connect(_update_weapon_ui)
+	_update_level_ui()
 	# Screen tint shown while burning
 	_burn_overlay = ColorRect.new()
 	_burn_overlay.color = Color(1.0, 0.35, 0.05, 0.22)
@@ -123,24 +142,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			and event.physical_keycode == KEY_C:
 		_crouch_toggled = not _crouch_toggled
 
-	# 1 / 2: weapon switch (the laser must have been crafted first)
+	# Keys 1..5: select a weapon slot. Slots are filled by clicking
+	# weapons in the inventory, so an empty key simply does nothing.
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.physical_keycode == KEY_1 and weapon != Weapon.AK:
-			if _owns_ak():
-				weapon = Weapon.AK
-				Sfx.play_click()
-				_update_weapon_ui()
-			else:
-				fire_mode_label.text = "AK-47: craft it first (10 warbot parts)"
-		elif event.physical_keycode == KEY_2 and weapon != Weapon.LASER:
-			if _owns_laser():
-				weapon = Weapon.LASER
-				Sfx.play_click()
-				_update_weapon_ui()
-			else:
-				fire_mode_label.text = "LASER: craft it first"
-		elif event.physical_keycode == KEY_3 and weapon != Weapon.MELEE:
-			weapon = Weapon.MELEE
+		var keys := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5]
+		var slot := keys.find(event.physical_keycode)
+		if slot >= 0 and slot < weapons.size() and slot != weapon_idx:
+			weapon_idx = slot
 			Sfx.play_click()
 			_update_weapon_ui()
 
@@ -274,7 +282,8 @@ func _physics_process(delta: float) -> void:
 	_melee_cd = maxf(_melee_cd - delta, 0.0)
 	var fire_pressed := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
 			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
-	if weapon == Weapon.AK:
+	var wk := current_weapon()
+	if wk == "ak":
 		if fire_pressed and not _prev_fire_pressed \
 				and _burst_left == 0 and _fire_cd == 0.0:
 			if ak_ammo > 0:
@@ -289,9 +298,20 @@ func _physics_process(delta: float) -> void:
 				ak_ammo -= 1
 				_burst_left -= 1
 				_fire_cd = (1.0 / FIRE_RATE) if _burst_left > 0 else 0.35
-				_shoot()
+				_fire_bullet(SPREAD_MAX, SPREAD_MIN, 1.0)
 				_update_weapon_ui()
-	elif weapon == Weapon.LASER:
+	elif wk == "pistol":
+		# Crude pistol: semi-auto, one shot per click, wide spread
+		if fire_pressed and not _prev_fire_pressed and _fire_cd == 0.0:
+			if pistol_ammo > 0:
+				pistol_ammo -= 1
+				_fire_cd = PISTOL_FIRE_CD
+				_fire_bullet(PISTOL_SPREAD_MAX, PISTOL_SPREAD_MIN, 1.0)
+				_update_weapon_ui()
+			else:
+				Sfx.play_click()   # dry fire: out of rounds
+				_fire_cd = 0.3
+	elif wk == "laser":
 		if fire_pressed and not _prev_fire_pressed and _laser_cd == 0.0:
 			if laser_ammo > 0:
 				laser_ammo -= 1
@@ -302,14 +322,16 @@ func _physics_process(delta: float) -> void:
 				Sfx.play_click()   # dry fire: no cells left
 				_laser_cd = 0.4
 	else:
-		# Crowbar: always usable, no ammo — the guaranteed fallback
+		# Melee: always usable, no ammo — the guaranteed fallback
 		if fire_pressed and _melee_cd == 0.0:
 			_melee_cd = MELEE_COOLDOWN
 			_melee_attack()
 	_prev_fire_pressed = fire_pressed
 
 
-func _shoot() -> void:
+## Fires one bullet with the given spread envelope and base damage.
+## Shared by the AK and the crude pistol.
+func _fire_bullet(spread_max: float, spread_min: float, base_damage: float) -> void:
 	# Bullet origin: the AK's barrel (the character's one in
 	# third person, the FPS-view one otherwise). Aiming stays camera-based.
 	var muzzle: Vector3
@@ -319,7 +341,7 @@ func _shoot() -> void:
 		muzzle = camera.global_transform * Vector3(0.2, -0.2, -0.7)
 	# Spread: random cone whose angle tightens with the lock.
 	# Without lock the AK sprays (~2.6 deg); sustained aim = precise bullets.
-	var spread := lerpf(SPREAD_MAX, SPREAD_MIN, _lock)
+	var spread := lerpf(spread_max, spread_min, _lock)
 	var ang := randf_range(0.0, TAU)
 	var dev := randf() * spread
 	var b := camera.global_transform.basis
@@ -351,8 +373,9 @@ func _shoot() -> void:
 
 	var bullet := BulletScript.new()
 	bullet.setup(muzzle, target, normal, collider, aim_dir * SHOOT_FORCE)
-	# Without lock, bullets that still hit deal half damage
-	bullet.damage = lerpf(0.5, 1.0, _lock)
+	# Without lock, bullets that still hit deal half damage; the player
+	# level scales everything up
+	bullet.damage = base_damage * lerpf(0.5, 1.0, _lock) * damage_mult()
 	get_tree().current_scene.add_child(bullet)
 
 
@@ -375,29 +398,36 @@ func take_damage(amount: float) -> void:
 
 ## Healing (medkit from the inventory).
 func heal(amount: float) -> void:
-	health = minf(health + amount, MAX_HEALTH)
+	health = minf(health + amount, max_health())
 
 
 ## Ammo added by the crafting window ("ak" or "laser").
 func add_ammo(kind: String, n: int) -> void:
-	if kind == "ak":
-		ak_ammo += n
-	else:
-		laser_ammo += n
+	match kind:
+		"ak":
+			ak_ammo += n
+		"pistol":
+			pistol_ammo += n
+		_:
+			laser_ammo += n
 	_update_weapon_ui()
 
 
 ## Death: back to the spawn point, health and stamina restored,
 ## but the ENTIRE inventory is lost and ammo drops to survival rations.
 func _die() -> void:
-	health = MAX_HEALTH
+	health = max_health()
 	stamina = MAX_STAMINA
 	_can_sprint = true
 	velocity = Vector3.ZERO
-	ak_ammo = AK_AMMO_RESPAWN
-	laser_ammo = LASER_AMMO_RESPAWN
+	ak_ammo = AK_AMMO_RESPAWN if _owns_ak() else 0
+	laser_ammo = LASER_AMMO_RESPAWN if _owns_laser() else 0
+	pistol_ammo = PISTOL_AMMO_RESPAWN if weapons.has("pistol") else 0
+	# Part of the inventory spills on the corpse spot: each unit has a
+	# coin flip to fall. Equipped weapons never drop — losing a 10-part
+	# AK to a single death would be brutal.
+	_scatter_death_loot(global_position)
 	_update_weapon_ui()
-	Inventory.clear()
 	if spawn_position != Vector3.ZERO:
 		global_position = spawn_position
 
@@ -412,19 +442,27 @@ func _owns_laser() -> bool:
 
 
 func _update_weapon_ui() -> void:
-	if weapon == Weapon.AK:
-		fire_mode_label.text = "AK — BURST x3 — AMMO %d" % ak_ammo
-	elif weapon == Weapon.LASER:
-		fire_mode_label.text = "LASER PISTOL — CELLS %d" % laser_ammo
-	else:
-		fire_mode_label.text = "LASER SABER — MELEE" if _owns_saber() else "RUSTY KNIFE — MELEE"
+	var slot := weapon_idx + 1
+	match current_weapon():
+		"ak":
+			fire_mode_label.text = "[%d] AK — BURST x3 — AMMO %d" % [slot, ak_ammo]
+		"pistol":
+			fire_mode_label.text = "[%d] CRUDE PISTOL — AMMO %d" % [slot, pistol_ammo]
+		"laser":
+			fire_mode_label.text = "[%d] LASER PISTOL — CELLS %d" % [slot, laser_ammo]
+		_:
+			var mname := "LASER SABER" if _owns_saber() else "RUSTY KNIFE"
+			fire_mode_label.text = "[%d] %s — MELEE" % [slot, mname]
 	_update_viewmodels()
 
 
 func _update_viewmodels() -> void:
-	fp_gun.visible = not third_person and weapon == Weapon.AK
-	laser_gun.visible = not third_person and weapon == Weapon.LASER
-	var melee := not third_person and weapon == Weapon.MELEE
+	var wk := current_weapon()
+	var fp := not third_person
+	fp_gun.visible = fp and wk == "ak"
+	laser_gun.visible = fp and wk == "laser"
+	pistol_gun.visible = fp and wk == "pistol"
+	var melee := fp and wk == "melee"
 	var has_saber := _owns_saber()
 	knife.visible = melee and not has_saber
 	saber.visible = melee and has_saber
@@ -451,7 +489,7 @@ func _shoot_laser() -> void:
 	var beam := LaserBeamScript.new()
 	if hit:
 		beam.setup(muzzle, hit.position, hit.normal, hit.collider,
-				LASER_DAMAGE * lerpf(0.5, 1.0, _lock))
+				LASER_DAMAGE * lerpf(0.5, 1.0, _lock) * damage_mult())
 	else:
 		beam.setup(muzzle, from + aim_dir * 120.0, Vector3.ZERO, null, 0.0)
 	get_tree().current_scene.add_child(beam)
@@ -468,7 +506,7 @@ func _melee_attack() -> void:
 	var from: Vector3 = camera.global_position
 	var dir: Vector3 = -camera.global_transform.basis.z
 	var reach := SABER_RANGE if has_saber else MELEE_RANGE
-	var dmg := SABER_DAMAGE if has_saber else MELEE_DAMAGE
+	var dmg: float = (SABER_DAMAGE if has_saber else MELEE_DAMAGE) * damage_mult()
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, from + dir * reach)
 	query.exclude = [get_rid()]
@@ -489,3 +527,86 @@ func apply_burn(duration := 3.0) -> void:
 
 func _owns_ak() -> bool:
 	return int(Inventory.items.get("ak", 0)) > 0
+
+
+## --- Player progression ---
+
+func current_weapon() -> String:
+	return weapons[weapon_idx] if weapon_idx < weapons.size() else "melee"
+
+
+func max_health() -> float:
+	return MAX_HEALTH + float(level - 1) * 10.0
+
+
+## Damage multiplier granted by the level (+5% per level).
+func damage_mult() -> float:
+	return 1.0 + float(level - 1) * 0.05
+
+
+func xp_to_next() -> int:
+	return 30 + (level - 1) * 10
+
+
+## Experience reward, awarded by hit_effects when a mob dies.
+func gain_xp(amount: int) -> void:
+	if level >= MAX_LEVEL:
+		return
+	xp += amount
+	while level < MAX_LEVEL and xp >= xp_to_next():
+		xp -= xp_to_next()
+		level += 1
+		health = max_health()   # full heal on level up
+		Sfx.play_click()
+	_update_level_ui()
+
+
+func _update_level_ui() -> void:
+	level_label.text = "LEVEL %d" % level
+	xp_bar.max_value = xp_to_next()
+	xp_bar.value = xp
+	health_bar.max_value = max_health()
+
+
+## Called when a weapon is clicked in the inventory: it takes the first
+## free key slot (1..5), or is simply re-selected if already equipped.
+func equip_weapon(kind: String) -> void:
+	var i := weapons.find(kind)
+	if i < 0:
+		if weapons.size() >= 5:
+			fire_mode_label.text = "All weapon slots are full"
+			return
+		weapons.append(kind)
+		i = weapons.size() - 1
+	weapon_idx = i
+	Sfx.play_click()
+	_update_weapon_ui()
+
+
+## Death loot: every stackable item unit gets a coin flip to fall on
+## the ground where the player died. Survivors stay in the inventory,
+## so a death costs you something without wiping the run. Equipped
+## weapons are never dropped.
+func _scatter_death_loot(pos: Vector3) -> void:
+	var protected := ["ak", "pistol", "saber"]
+	var to_drop: Array[String] = []
+	for id in Inventory.items.keys():
+		var sid := String(id)
+		if protected.has(sid):
+			continue
+		var n := int(Inventory.items[id])
+		for i in n:
+			if randf() < DEATH_DROP_CHANCE and Inventory.remove_item(sid):
+				to_drop.append(sid)
+
+	# Scatter them in a small ring so overlapping stacks stay pickable
+	var scene := get_tree().current_scene
+	for i in to_drop.size():
+		var ang := TAU * float(i) / maxf(float(to_drop.size()), 1.0) + randf() * 0.4
+		var r := randf_range(0.4, 1.6)
+		var drop := Area3D.new()
+		drop.set_script(DroppedItemScript)
+		drop.item_id = to_drop[i]
+		drop.lifetime = DEATH_DROP_LIFETIME
+		drop.position = pos + Vector3(cos(ang) * r, 0.5, sin(ang) * r)
+		scene.add_child(drop)

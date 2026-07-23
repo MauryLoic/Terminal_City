@@ -88,7 +88,7 @@ func get_height(x: float, z: float) -> float:
 	# mountains across the whole northern band. The basin (crater) and
 	# the canyon are carved through it below — so the ONLY way between
 	# the base and the main zone is the canyon path.
-	var m := smoothstep(56.0, 74.0, -z)
+	var m := smoothstep(22.0, 42.0, -z)
 	if m > 0.0:
 		var mdune := 1.0 + 0.3 * _noise.get_noise_2d(x * 0.5 + 900.0, z * 0.5)
 		h += m * 26.0 * mdune
@@ -100,9 +100,9 @@ func get_height(x: float, z: float) -> float:
 	if bmask > 0.0:
 		h = lerpf(h, BASE_FLOOR, bmask)
 	# Canyon path through the rim, linking the main bowl to the basin
-	if z < -48.0 and z > BASE_CENTER_Z:
-		var pt := clampf((-z - 48.0) / 34.0, 0.0, 1.0)
-		var path_h := lerpf(2.6, BASE_FLOOR, pt)
+	if z < -16.0 and z > BASE_CENTER_Z:
+		var pt := clampf((-z - 16.0) / 56.0, 0.0, 1.0)
+		var path_h := lerpf(2.4, BASE_FLOOR, pt)
 		var xmask := 1.0 - smoothstep(PATH_HALF_WIDTH, PATH_HALF_WIDTH + 4.0, absf(x))
 		if xmask > 0.0 and path_h < h:
 			h = lerpf(h, path_h, xmask)
@@ -572,7 +572,7 @@ func _make_shack() -> StaticBody3D:
 func _in_base_area(x: float, z: float) -> bool:
 	if Vector2(x, z - BASE_CENTER_Z).length() < BASE_RADIUS + 8.0:
 		return true
-	return absf(x) < 8.5 and z < -46.0
+	return absf(x) < 8.5 and z < -14.0
 
 
 ## Pre-apocalyptic army base: a concrete bunker on the basin with
@@ -649,6 +649,12 @@ func _build_army_base() -> void:
 	_add_block(b, Vector3(2.0, 0.7, 4.6), Vector3(7.0, 1.05, 2.5), army_green)     # chassis
 	_add_block(b, Vector3(1.9, 0.9, 1.3), Vector3(7.0, 1.9, 0.8), army_green)      # cabin
 	_add_block(b, Vector3(1.9, 1.1, 2.6), Vector3(7.0, 2.0, 3.4), canvas)          # canvas back
+	# The crude starting pistol, lying on the first desk
+	var pistol := Area3D.new()
+	pistol.set_script(preload("res://scripts/pistol_pickup.gd"))
+	pistol.position = Vector3(-7.0, BASE_FLOOR + 0.88, BASE_CENTER_Z - 2.0 - 5.5)
+	add_child(pistol)
+
 	for wp: Vector3 in [Vector3(6.0, 0.45, 1.1), Vector3(8.0, 0.45, 1.1), Vector3(6.0, 0.45, 3.9), Vector3(8.0, 0.45, 3.9)]:
 		var wheel := MeshInstance3D.new()
 		var wm := CylinderMesh.new()
@@ -682,13 +688,13 @@ func _add_deco(body: Node3D, mat: StandardMaterial3D, size: Vector3, pos: Vector
 func is_in_sanctuary(p: Vector3) -> bool:
 	if Vector2(p.x, p.z - BASE_CENTER_Z).length() < BASE_RADIUS + 8.0:
 		return true
-	return absf(p.x) < 8.5 and p.z < -61.5
+	return absf(p.x) < 8.5 and p.z < -31.5
 
 
 ## Chain-link fence across the canyon mouth, with an openable gate in
 ## the middle (canyon_gate.gd): the sanctuary/main-zone boundary.
 func _build_canyon_gate() -> void:
-	var gz := -62.0
+	var gz := -32.0
 	var gy := get_height(0.0, gz)
 
 	var fence := StaticBody3D.new()
@@ -717,3 +723,9 @@ func _build_canyon_gate() -> void:
 	gate.set_script(preload("res://scripts/canyon_gate.gd"))
 	gate.position = Vector3(0, gy, gz)
 	add_child(gate)
+
+
+## True only inside the base crater itself (NOT the canyon): pistol
+## ammo can only be crafted here.
+func is_in_base(p: Vector3) -> bool:
+	return Vector2(p.x, p.z - BASE_CENTER_Z).length() < BASE_RADIUS + 6.0

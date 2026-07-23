@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ak47.tscn" id="2_ak"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/mob_health_bars.gd" id="6_mobbars"]
 [ext_resource type="Script" path="res://scripts/rusty_knife.gd" id="7_knife"]
 [ext_resource type="Script" path="res://scripts/laser_saber.gd" id="8_saber"]
+[ext_resource type="Script" path="res://scripts/pistol.gd" id="9_pistol"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -29,6 +30,13 @@ corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stamina"]
 bg_color = Color(0.9, 0.75, 0.2, 0.92)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp"]
+bg_color = Color(0.55, 0.32, 0.85, 0.92)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -68,6 +76,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.28, -0.45)
 visible = false
 script = ExtResource("8_saber")
 
+[node name="PistolGun" type="Node3D" parent="Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.26, -0.24, -0.4)
+visible = false
+script = ExtResource("9_pistol")
+
 [node name="SpringArm3D" type="SpringArm3D" parent="Camera3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0.3, 0)
 spring_length = 3.5
@@ -96,7 +109,7 @@ vertical_alignment = 1
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -64.0
+offset_top = -100.0
 offset_right = 250.0
 offset_bottom = -16.0
 grow_vertical = 0
@@ -118,6 +131,17 @@ show_percentage = false
 theme_override_styles/background = SubResource("StyleBoxFlat_barbg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_stamina")
 
+[node name="LevelLabel" type="Label" parent="HUD/Bars"]
+text = "LVL 1"
+
+[node name="XpBar" type="ProgressBar" parent="HUD/Bars"]
+custom_minimum_size = Vector2(234, 10)
+max_value = 30.0
+value = 0.0
+show_percentage = false
+theme_override_styles/background = SubResource("StyleBoxFlat_barbg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_xp")
+
 [node name="Reticle" type="Control" parent="HUD"]
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -128,9 +152,9 @@ script = ExtResource("4_reticle")
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -92.0
-offset_right = 250.0
-offset_bottom = -70.0
+offset_top = -128.0
+offset_right = 320.0
+offset_bottom = -104.0
 text = "AK — BURST x3"
 
 [node name="MobBars" type="Control" parent="HUD"]

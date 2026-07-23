@@ -19,6 +19,13 @@ const RECIPES := [
 		"type": "soin",
 	},
 	{
+		"nom": "Pistol rounds x20 (base only)",
+		"compos": {"res_casing": 3},
+		"chance": 0.85,
+		"type": "ammo_pistol",
+		"zone": "base",
+	},
+	{
 		"nom": "AK rounds x30",
 		"compos": {"res_metal": 2, "res_powder": 1},
 		"chance": 0.8,
@@ -50,6 +57,7 @@ const COMPO_NAMES := {
 	"compo_medical": "Medical comp.",
 	"compo_organic": "Organic gland",
 	"res_metal": "Scrap",
+	"res_casing": "Casing",
 	"res_powder": "Powder",
 	"res_cell": "E-core",
 	"saber_part": "Saber part",
@@ -58,7 +66,7 @@ const COMPO_NAMES := {
 # Probabilities for slot count 0..5 (5-slot weapons are rare)
 const SLOT_WEIGHTS := [10, 25, 25, 20, 15, 5]
 
-@onready var recipe_box: VBoxContainer = $Center/Panel/VBox/Recipes
+@onready var recipe_box: VBoxContainer = $Center/Panel/VBox/Scroll/Recipes
 @onready var result_label: Label = $Center/Panel/VBox/Result
 @onready var gear_button: Button = $Center/Panel/VBox/Bottom/Gear
 @onready var close_button: Button = $Center/Panel/VBox/Bottom/Close
@@ -73,6 +81,8 @@ func _ready() -> void:
 	for i in RECIPES.size():
 		var b := Button.new()
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 44)
 		b.pressed.connect(_on_recipe_selected.bind(i))
 		recipe_box.add_child(b)
 		_recipe_buttons.append(b)
@@ -126,10 +136,19 @@ func _refresh() -> void:
 			if have < need:
 				ok = false
 			lines.append("%s %d/%d" % [COMPO_NAMES.get(id, id), have, need])
+		# Zone-restricted recipes are only craftable in the right place
+		if str(r.get("zone", "")) == "base" and not _player_in_base():
+			ok = false
 		var prefix := "> " if i == _selected else "   "
 		_recipe_buttons[i].text = "%s%s\n      %s" % [prefix, r.nom, "   ".join(lines)]
 		if i == _selected:
 			gear_button.disabled = not ok
+			if ok:
+				gear_button.tooltip_text = "Assemble the selected recipe"
+			elif str(r.get("zone", "")) == "base" and not _player_in_base():
+				gear_button.tooltip_text = "Craftable only inside the starting base"
+			else:
+				gear_button.tooltip_text = "Missing components"
 
 
 func _on_gear_pressed() -> void:
@@ -146,6 +165,11 @@ func _on_gear_pressed() -> void:
 				Inventory.add_item("laser_slots_%d" % slots)
 				result_label.text = "Success! Laser pistol [%d slot%s] — press 2 to equip" \
 						% [slots, "s" if slots > 1 else ""]
+			"ammo_pistol":
+				var player0 := get_tree().get_first_node_in_group("player")
+				if player0:
+					player0.add_ammo("pistol", 20)
+				result_label.text = "Success! 20 pistol rounds added"
 			"ammo_ak":
 				var player := get_tree().get_first_node_in_group("player")
 				if player:
@@ -189,3 +213,11 @@ func _weighted(weights: Array) -> int:
 		if r <= 0:
 			return i
 	return 0
+
+
+func _player_in_base() -> bool:
+	var player := get_tree().get_first_node_in_group("player")
+	var world := get_tree().current_scene.get_node_or_null("World")
+	if player == null or world == null:
+		return false
+	return world.is_in_base(player.global_position)

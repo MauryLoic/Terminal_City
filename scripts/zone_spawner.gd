@@ -42,7 +42,7 @@ func _on_critter_died(_pos: Vector3) -> void:
 func _spawn_corridor_ant() -> void:
 	var world := get_tree().current_scene.get_node_or_null("World")
 	var x := randf_range(-2.5, 2.5)
-	var z := randf_range(-92.0, -66.0)
+	var z := randf_range(-88.0, -38.0)
 	var y := 7.0
 	if world:
 		y = world.get_height(x, z) + 0.4
