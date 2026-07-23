@@ -45,12 +45,16 @@ func _ready() -> void:
 	var ants := Node.new()
 	ants.set_script(preload("res://scripts/ant_spawner.gd"))
 	add_child(ants)
+	var start_zone := Node.new()
+	start_zone.set_script(preload("res://scripts/zone_spawner.gd"))
+	add_child(start_zone)
 
 
-## Places the player on the ground, on the south bank of the river.
+## Places the player inside the army bunker — the level-1 starting
+## zone up in the northern mountains.
 func _place_player() -> void:
-	var y: float = $World.get_height(0.0, 60.0)
-	$Player.position = Vector3(0.0, y + 1.5, 60.0)
+	var y: float = $World.get_height(0.0, -104.0)
+	$Player.position = Vector3(0.0, y + 1.5, -104.0)
 	$Player.spawn_position = $Player.position
 	$Player.velocity = Vector3.ZERO
 
@@ -60,6 +64,9 @@ func _process(_delta: float) -> void:
 	# put them back at spawn instead of letting them fall forever.
 	if $Player.global_position.y < -40.0:
 		_place_player()
+	# Sanctuary flag: main-zone creatures read it to ignore the player
+	# while they stand in the base or on the canyon path
+	$Player.in_sanctuary = $World.is_in_sanctuary($Player.global_position)
 
 
 func _on_connect_requested(host: String, port: int, player_name: String) -> void:

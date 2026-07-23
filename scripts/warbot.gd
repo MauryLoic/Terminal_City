@@ -10,7 +10,7 @@ signal died(pos: Vector3)
 const WALK_SPEED := 2.2
 const CHASE_SPEED := 3.4
 const GRAVITY := 14.0
-const AGGRO_RANGE := 12.0
+const AGGRO_RANGE := 18.0
 const LOSE_RANGE := 50.0
 const FIRE_RANGE := 26.0
 const STOP_RANGE := 11.0
@@ -31,8 +31,8 @@ var _plate: StandardMaterial3D
 func _ready() -> void:
 	add_to_group("mob")
 	set_meta("mat", "metal")
-	set_meta("hp", 12.0)
-	set_meta("hp_max", 12.0)
+	set_meta("hp", 18.0)
+	set_meta("hp_max", 18.0)
 	set_meta("bar_height", 3.0)
 	set_meta("mob_name", "Warbot")
 	set_meta("aim_center", 1.5)
@@ -65,8 +65,13 @@ func _physics_process(delta: float) -> void:
 	var ppos: Vector3 = player.global_position
 	var dist := global_position.distance_to(ppos)
 
+	# Sanctuary: a player in the base/canyon zone is ignored entirely
+	var player_safe: bool = player.get("in_sanctuary") == true
+	if player_safe:
+		aggro = false
+
 	# State transitions: proximity aggro, disengage at long range
-	if not aggro and dist < AGGRO_RANGE:
+	if not player_safe and not aggro and dist < AGGRO_RANGE:
 		aggro = true
 	elif aggro and dist > LOSE_RANGE:
 		aggro = false
@@ -109,7 +114,7 @@ func _physics_process(delta: float) -> void:
 	if aggro:
 		_shoot_t -= delta
 		if _shoot_t <= 0.0 and dist < FIRE_RANGE:
-			_shoot_t = randf_range(2.5, 4.0)
+			_shoot_t = randf_range(2.0, 3.2)
 			_fire_plasma(ppos)
 
 
@@ -126,7 +131,9 @@ func _fire_plasma(target: Vector3) -> void:
 
 ## Called by hit_effects for every bullet taken: flash and aggro.
 func on_hit() -> void:
-	aggro = true
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null or player.get("in_sanctuary") != true:
+		aggro = true
 	_plate.albedo_color = Color(0.9, 0.4, 0.3)
 	var tw := create_tween()
 	tw.tween_property(_plate, "albedo_color", Color(0.42, 0.45, 0.4), 0.25)

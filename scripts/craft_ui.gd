@@ -31,6 +31,12 @@ const RECIPES := [
 		"type": "ammo_laser",
 	},
 	{
+		"nom": "AK-47",
+		"compos": {"ak_part": 10},
+		"chance": 1.0,
+		"type": "ak_weapon",
+	},
+	{
 		"nom": "Laser saber",
 		"compos": {"saber_part": 10},
 		"chance": 1.0,
@@ -47,6 +53,7 @@ const COMPO_NAMES := {
 	"res_powder": "Powder",
 	"res_cell": "E-core",
 	"saber_part": "Saber part",
+	"ak_part": "AK part",
 }
 # Probabilities for slot count 0..5 (5-slot weapons are rare)
 const SLOT_WEIGHTS := [10, 25, 25, 20, 15, 5]
@@ -149,6 +156,9 @@ func _on_gear_pressed() -> void:
 				if player2:
 					player2.add_ammo("laser", 5)
 				result_label.text = "Success! 5 laser cells added"
+			"ak_weapon":
+				Inventory.add_item("ak")
+				result_label.text = "Success! AK-47 assembled — your rifle (key 1)"
 			"saber":
 				Inventory.add_item("saber")
 				result_label.text = "Success! Laser saber assembled — your melee weapon (key 3)"

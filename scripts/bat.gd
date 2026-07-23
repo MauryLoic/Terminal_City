@@ -12,7 +12,7 @@ signal died(pos: Vector3)
 const FLY_SPEED := 6.5
 const ORBIT_RADIUS := 9.0
 const ATTACK_RANGE := 30.0
-const AGGRO_RANGE := 9.0     # trigger distance
+const AGGRO_RANGE := 14.0    # trigger distance
 const LOSE_RANGE := 45.0     # disengage distance
 const AcidScript := preload("res://scripts/acid_glob.gd")
 const CorpseScript := preload("res://scripts/corpse.gd")
@@ -33,8 +33,8 @@ func _ready() -> void:
 	add_to_group("bat")
 	add_to_group("mob")
 	set_meta("mat", "flesh")
-	set_meta("hp", 5.0)
-	set_meta("hp_max", 5.0)
+	set_meta("hp", 8.0)
+	set_meta("hp_max", 8.0)
 	set_meta("bar_height", 1.0)
 	set_meta("mob_name", "Vampire Bat")
 	set_meta("aim_center", 0.0)
@@ -61,8 +61,13 @@ func _physics_process(delta: float) -> void:
 	var ppos: Vector3 = player.global_position
 	var dist := global_position.distance_to(ppos)
 
+	# Sanctuary: a player in the base/canyon zone is ignored entirely
+	var player_safe: bool = player.get("in_sanctuary") == true
+	if player_safe:
+		aggro = false
+
 	# State transitions
-	if not aggro and dist < AGGRO_RANGE:
+	if not player_safe and not aggro and dist < AGGRO_RANGE:
 		_alert_pack()
 	elif aggro and dist > LOSE_RANGE:
 		aggro = false
@@ -103,7 +108,7 @@ func _physics_process(delta: float) -> void:
 	if aggro:
 		_shoot_t -= delta
 		if _shoot_t <= 0.0 and dist < ATTACK_RANGE:
-			_shoot_t = randf_range(2.2, 3.5)
+			_shoot_t = randf_range(1.8, 3.0)
 			_spit_acid(ppos)
 
 
@@ -111,6 +116,9 @@ func _physics_process(delta: float) -> void:
 ## the whole pack goes on the attack.
 func on_hit() -> void:
 	_flash()
+	var player := get_tree().get_first_node_in_group("player")
+	if player and player.get("in_sanctuary") == true:
+		return   # shots from behind the fence don't provoke a chase
 	_alert_pack()
 
 

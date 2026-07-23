@@ -3,7 +3,10 @@ extends Area3D
 ## contact, splashes the scenery with metal-like sparks otherwise.
 
 const SPEED := 16.0
-const DAMAGE := 15.0
+# One-shot on a level-1 runner (100 HP): venturing into the main zone
+# unprepared is lethal, as intended. To rebalance with the future
+# player-level system.
+const DAMAGE := 100.0
 
 var direction := Vector3.FORWARD
 var _life := 4.0

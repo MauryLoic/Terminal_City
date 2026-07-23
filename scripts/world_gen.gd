@@ -18,6 +18,12 @@ const WORLD_SEED := 1337
 const TREE_COUNT := 35
 const BUSH_COUNT := 90
 const ROCK_COUNT := 45
+# Army base carved into the northern mountains (the starting zone)
+const BASE_CENTER_Z := -102.0
+const BASE_RADIUS := 15.0
+const BASE_FLOOR := 6.0
+const PATH_HALF_WIDTH := 3.5
+
 const BUILDING_COUNT := 4
 const SHACK_COUNT := 5
 const JUNK_COUNT := 30
@@ -56,6 +62,8 @@ func _generate(world_seed: int) -> void:
 	_build_water()
 	_build_borders()
 	_scatter_props()
+	_build_army_base()
+	_build_canyon_gate()
 
 
 ## Terrain height at (x, z), river already carved.
@@ -75,6 +83,29 @@ func get_height(x: float, z: float) -> float:
 	if rim > 0.0:
 		var dune := 1.0 + 0.35 * _noise.get_noise_2d(x * 0.6 + 500.0, z * 0.6)
 		h += rim * rim * 28.0 * dune
+
+	# Northern mountain massif hosting the army base: a solid wall of
+	# mountains across the whole northern band. The basin (crater) and
+	# the canyon are carved through it below — so the ONLY way between
+	# the base and the main zone is the canyon path.
+	var m := smoothstep(56.0, 74.0, -z)
+	if m > 0.0:
+		var mdune := 1.0 + 0.3 * _noise.get_noise_2d(x * 0.5 + 900.0, z * 0.5)
+		h += m * 26.0 * mdune
+
+	# Army base basin: a flat crater floor dug into the massif,
+	# hosting the starting bunker
+	var bd := Vector2(x, z - BASE_CENTER_Z).length()
+	var bmask := 1.0 - smoothstep(BASE_RADIUS, BASE_RADIUS + 6.0, bd)
+	if bmask > 0.0:
+		h = lerpf(h, BASE_FLOOR, bmask)
+	# Canyon path through the rim, linking the main bowl to the basin
+	if z < -48.0 and z > BASE_CENTER_Z:
+		var pt := clampf((-z - 48.0) / 34.0, 0.0, 1.0)
+		var path_h := lerpf(2.6, BASE_FLOOR, pt)
+		var xmask := 1.0 - smoothstep(PATH_HALF_WIDTH, PATH_HALF_WIDTH + 4.0, absf(x))
+		if xmask > 0.0 and path_h < h:
+			h = lerpf(h, path_h, xmask)
 	return h
 
 
@@ -204,7 +235,7 @@ func _scatter_props() -> void:
 
 	for i in TREE_COUNT:
 		var p := _random_ground_point(half)
-		if p.y > WATER_Y + 0.8:
+		if p.y > WATER_Y + 0.8 and not _in_base_area(p.x, p.z):
 			var tree := _make_dead_tree()
 			tree.position = p
 			tree.rotation.y = _rng.randf_range(0.0, TAU)
@@ -212,17 +243,17 @@ func _scatter_props() -> void:
 
 	for i in BUSH_COUNT:
 		var p := _random_ground_point(half)
-		if p.y > WATER_Y + 0.6:
+		if p.y > WATER_Y + 0.6 and not _in_base_area(p.x, p.z):
 			add_child(_make_bush(p))
 
 	for i in ROCK_COUNT:
 		var p := _random_ground_point(half)
-		if p.y > WATER_Y + 0.2:
+		if p.y > WATER_Y + 0.2 and not _in_base_area(p.x, p.z):
 			add_child(_make_rock(p))
 
 	for i in JUNK_COUNT:
 		var p := _random_ground_point(half)
-		if p.y > WATER_Y + 0.4:
+		if p.y > WATER_Y + 0.4 and not _in_base_area(p.x, p.z):
 			add_child(_make_junk(p))
 
 
@@ -239,7 +270,7 @@ func _find_flat_spot(half: float, radius: float, tries: int) -> Vector3:
 		var x := _rng.randf_range(-half, half)
 		var z := _rng.randf_range(-half, half)
 		var h0 := get_height(x, z)
-		if h0 <= WATER_Y + 1.2:
+		if h0 <= WATER_Y + 1.2 or _in_base_area(x, z):
 			continue
 		var flat := true
 		for off: Vector2 in [Vector2(radius, 0), Vector2(-radius, 0), Vector2(0, radius), Vector2(0, -radius)]:
@@ -534,3 +565,155 @@ func _make_shack() -> StaticBody3D:
 	b.set_meta("debris_count", 26)
 	b.set_meta("debris_size", 0.28)
 	return b
+
+
+## True inside the army base basin or the canyon path (no random props
+## there — the area is authored by hand).
+func _in_base_area(x: float, z: float) -> bool:
+	if Vector2(x, z - BASE_CENTER_Z).length() < BASE_RADIUS + 8.0:
+		return true
+	return absf(x) < 8.5 and z < -46.0
+
+
+## Pre-apocalyptic army base: a concrete bunker on the basin with
+## offices (desks, chairs, papers), army crates and a military truck.
+## Interior is roofed and lit by warm emergency lights.
+func _build_army_base() -> void:
+	var b := StaticBody3D.new()
+	b.set_meta("mat", "stone")
+	b.position = Vector3(0, BASE_FLOOR, BASE_CENTER_Z - 2.0)
+
+	var concrete := StandardMaterial3D.new()
+	concrete.albedo_color = Color(0.52, 0.52, 0.5)
+	concrete.roughness = 1.0
+	var floor_mat := StandardMaterial3D.new()
+	floor_mat.albedo_color = Color(0.36, 0.36, 0.35)
+	floor_mat.roughness = 1.0
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.45, 0.37, 0.28)
+	wood.roughness = 0.9
+	var army_green := StandardMaterial3D.new()
+	army_green.albedo_color = Color(0.28, 0.35, 0.24)
+	army_green.roughness = 0.85
+	var canvas := StandardMaterial3D.new()
+	canvas.albedo_color = Color(0.22, 0.27, 0.19)
+	canvas.roughness = 1.0
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.1, 0.1, 0.11)
+	dark.roughness = 0.8
+	var paper := StandardMaterial3D.new()
+	paper.albedo_color = Color(0.88, 0.87, 0.8)
+
+	# Bunker shell: 22 x 16 m, door (4 m) on the south wall toward the path
+	var w := 22.0
+	var d := 16.0
+	var hh := 4.5
+	var t := 0.6
+	var door := 4.0
+	_add_block(b, Vector3(w - 0.2, 0.3, d - 0.2), Vector3(0, 0.15, 0), floor_mat)
+	_add_block(b, Vector3(w, hh, t), Vector3(0, hh * 0.5, -d * 0.5), concrete)
+	_add_block(b, Vector3(t, hh, d), Vector3(-w * 0.5, hh * 0.5, 0), concrete)
+	_add_block(b, Vector3(t, hh, d), Vector3(w * 0.5, hh * 0.5, 0), concrete)
+	var seg := (w - door) * 0.5
+	_add_block(b, Vector3(seg, hh, t), Vector3(-(door + seg) * 0.5, hh * 0.5, d * 0.5), concrete)
+	_add_block(b, Vector3(seg, hh, t), Vector3((door + seg) * 0.5, hh * 0.5, d * 0.5), concrete)
+	_add_block(b, Vector3(door, hh - 3.2, t), Vector3(0, 3.2 + (hh - 3.2) * 0.5, d * 0.5), concrete)
+	_add_block(b, Vector3(w + 1.0, 0.5, d + 1.0), Vector3(0, hh + 0.25, 0), concrete)
+
+	# Emergency lights (the interior is roofed, hence dark)
+	for lp: Vector3 in [Vector3(-6, 3.8, -3), Vector3(6, 3.8, -3), Vector3(0, 3.8, 4)]:
+		var light := OmniLight3D.new()
+		light.light_color = Color(1.0, 0.82, 0.6)
+		light.light_energy = 1.3
+		light.omni_range = 10.0
+		light.position = lp
+		b.add_child(light)
+
+	# Office row: desks with papers, chairs
+	for dx: float in [-7.0, -3.0, 1.0]:
+		_add_block(b, Vector3(1.6, 0.08, 0.8), Vector3(dx, 0.75, -5.5), wood)      # desk top
+		_add_block(b, Vector3(0.06, 0.72, 0.7), Vector3(dx - 0.75, 0.36, -5.5), wood)
+		_add_block(b, Vector3(0.06, 0.72, 0.7), Vector3(dx + 0.75, 0.36, -5.5), wood)
+		_add_deco(b, paper, Vector3(0.3, 0.012, 0.22), Vector3(dx - 0.3, 0.8, -5.5), Vector3(0, randf_range(-0.4, 0.4), 0))
+		_add_deco(b, paper, Vector3(0.3, 0.012, 0.22), Vector3(dx + 0.25, 0.8, -5.4), Vector3(0, randf_range(-0.4, 0.4), 0))
+		# Chair facing the desk
+		_add_block(b, Vector3(0.45, 0.06, 0.45), Vector3(dx, 0.45, -4.4), dark)
+		_add_block(b, Vector3(0.45, 0.5, 0.06), Vector3(dx, 0.73, -4.18), dark)
+		_add_block(b, Vector3(0.08, 0.45, 0.08), Vector3(dx, 0.22, -4.4), dark)
+
+	# Army crate stacks
+	for cp: Vector3 in [Vector3(8.5, 0.35, -5.5), Vector3(8.5, 0.35, -4.4), Vector3(8.5, 1.05, -5.0), Vector3(-9.0, 0.35, 3.0)]:
+		_add_block(b, Vector3(1.2, 0.7, 0.7), cp, army_green)
+
+	# Military truck parked along the east wall
+	_add_block(b, Vector3(2.0, 0.7, 4.6), Vector3(7.0, 1.05, 2.5), army_green)     # chassis
+	_add_block(b, Vector3(1.9, 0.9, 1.3), Vector3(7.0, 1.9, 0.8), army_green)      # cabin
+	_add_block(b, Vector3(1.9, 1.1, 2.6), Vector3(7.0, 2.0, 3.4), canvas)          # canvas back
+	for wp: Vector3 in [Vector3(6.0, 0.45, 1.1), Vector3(8.0, 0.45, 1.1), Vector3(6.0, 0.45, 3.9), Vector3(8.0, 0.45, 3.9)]:
+		var wheel := MeshInstance3D.new()
+		var wm := CylinderMesh.new()
+		wm.top_radius = 0.45
+		wm.bottom_radius = 0.45
+		wm.height = 0.35
+		wm.material = dark
+		wheel.mesh = wm
+		wheel.position = wp
+		wheel.rotation.z = PI / 2
+		b.add_child(wheel)
+
+	add_child(b)
+
+
+## Decoration mesh without collision (papers and other small clutter).
+func _add_deco(body: Node3D, mat: StandardMaterial3D, size: Vector3, pos: Vector3, rot := Vector3.ZERO) -> void:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	bm.material = mat
+	mi.mesh = bm
+	mi.position = pos
+	mi.rotation = rot
+	body.add_child(mi)
+
+
+## True while the given position is inside the sanctuary: the base
+## crater or the canyon path, up to the fence line. Main-zone creatures
+## completely ignore a player standing in the sanctuary.
+func is_in_sanctuary(p: Vector3) -> bool:
+	if Vector2(p.x, p.z - BASE_CENTER_Z).length() < BASE_RADIUS + 8.0:
+		return true
+	return absf(p.x) < 8.5 and p.z < -61.5
+
+
+## Chain-link fence across the canyon mouth, with an openable gate in
+## the middle (canyon_gate.gd): the sanctuary/main-zone boundary.
+func _build_canyon_gate() -> void:
+	var gz := -62.0
+	var gy := get_height(0.0, gz)
+
+	var fence := StaticBody3D.new()
+	fence.set_meta("mat", "metal")
+	fence.position = Vector3(0, gy, gz)
+	var mesh_mat := StandardMaterial3D.new()
+	mesh_mat.albedo_color = Color(0.4, 0.42, 0.45, 0.4)
+	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mesh_mat.metallic = 0.4
+	mesh_mat.roughness = 0.6
+	var post_mat := StandardMaterial3D.new()
+	post_mat.albedo_color = Color(0.28, 0.3, 0.33)
+	post_mat.metallic = 0.5
+	post_mat.roughness = 0.5
+
+	# Fixed fence panels left and right of the gate, buried into the
+	# canyon slopes so nothing can slip around
+	_add_block(fence, Vector3(6.4, 3.0, 0.1), Vector3(-4.3, 1.5, 0), mesh_mat)
+	_add_block(fence, Vector3(6.4, 3.0, 0.1), Vector3(4.3, 1.5, 0), mesh_mat)
+	for px: float in [-7.4, -5.4, -3.4, -1.2, 1.2, 3.4, 5.4, 7.4]:
+		_add_deco(fence, post_mat, Vector3(0.14, 3.3, 0.14), Vector3(px, 1.6, 0))
+	_add_deco(fence, post_mat, Vector3(15.0, 0.1, 0.1), Vector3(0, 3.1, 0))
+	add_child(fence)
+
+	var gate := StaticBody3D.new()
+	gate.set_script(preload("res://scripts/canyon_gate.gd"))
+	gate.position = Vector3(0, gy, gz)
+	add_child(gate)

@@ -32,8 +32,8 @@ const WATER_LEVEL := -1.1
 
 const LASER_DAMAGE := 3.0     # beam damage (= 3 locked bullets)
 const LASER_COOLDOWN := 3.0   # the beam stays visible 3 s before the next shot
-const MELEE_DAMAGE := 1.5
-const MELEE_RANGE := 2.4
+const MELEE_DAMAGE := 1.0    # rusty knife
+const MELEE_RANGE := 2.0
 const MELEE_COOLDOWN := 0.7
 const SABER_DAMAGE := 4.0
 const SABER_RANGE := 2.8
@@ -55,12 +55,13 @@ const HitEffects := preload("res://scripts/hit_effects.gd")
 @onready var reticle: Control = $HUD/Reticle
 @onready var fire_mode_label: Label = $HUD/FireMode
 @onready var laser_gun: Node3D = $Camera3D/LaserGun
-@onready var crowbar: Node3D = $Camera3D/Crowbar
+@onready var knife: Node3D = $Camera3D/Knife
 @onready var saber: Node3D = $Camera3D/Saber
 
 var health := MAX_HEALTH
 var stamina := MAX_STAMINA
 var spawn_position := Vector3.ZERO   # filled in by main.gd
+var in_sanctuary := true             # updated by main.gd (base + canyon)
 
 var third_person := false
 var crouching := false
@@ -69,7 +70,7 @@ var _can_sprint := true
 var _fire_cd := 0.0
 enum Weapon { AK, LASER, MELEE }
 
-var weapon: int = Weapon.AK
+var weapon: int = Weapon.MELEE   # level 1 starts with the rusty knife
 var _laser_cd := 0.0
 var _melee_cd := 0.0
 var _burn_t := 0.0
@@ -125,9 +126,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	# 1 / 2: weapon switch (the laser must have been crafted first)
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_1 and weapon != Weapon.AK:
-			weapon = Weapon.AK
-			Sfx.play_click()
-			_update_weapon_ui()
+			if _owns_ak():
+				weapon = Weapon.AK
+				Sfx.play_click()
+				_update_weapon_ui()
+			else:
+				fire_mode_label.text = "AK-47: craft it first (10 warbot parts)"
 		elif event.physical_keycode == KEY_2 and weapon != Weapon.LASER:
 			if _owns_laser():
 				weapon = Weapon.LASER
@@ -413,7 +417,7 @@ func _update_weapon_ui() -> void:
 	elif weapon == Weapon.LASER:
 		fire_mode_label.text = "LASER PISTOL — CELLS %d" % laser_ammo
 	else:
-		fire_mode_label.text = "LASER SABER — MELEE" if _owns_saber() else "CROWBAR — MELEE"
+		fire_mode_label.text = "LASER SABER — MELEE" if _owns_saber() else "RUSTY KNIFE — MELEE"
 	_update_viewmodels()
 
 
@@ -422,7 +426,7 @@ func _update_viewmodels() -> void:
 	laser_gun.visible = not third_person and weapon == Weapon.LASER
 	var melee := not third_person and weapon == Weapon.MELEE
 	var has_saber := _owns_saber()
-	crowbar.visible = melee and not has_saber
+	knife.visible = melee and not has_saber
 	saber.visible = melee and has_saber
 
 
@@ -458,7 +462,7 @@ func _shoot_laser() -> void:
 ## ammo crafting, even with completely empty magazines.
 func _melee_attack() -> void:
 	var has_saber := _owns_saber()
-	var vm: Node3D = saber if has_saber else crowbar
+	var vm: Node3D = saber if has_saber else knife
 	vm.swing()
 	Sfx.play_swing(camera.global_position)
 	var from: Vector3 = camera.global_position
@@ -481,3 +485,7 @@ func _owns_saber() -> bool:
 ## extending, not adding).
 func apply_burn(duration := 3.0) -> void:
 	_burn_t = maxf(_burn_t, duration)
+
+
+func _owns_ak() -> bool:
+	return int(Inventory.items.get("ak", 0)) > 0

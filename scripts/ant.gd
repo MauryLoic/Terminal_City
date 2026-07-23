@@ -18,6 +18,7 @@ const RemainsScript := preload("res://scripts/ant_remains.gd")
 
 var home := Vector3.ZERO
 var aggro := false
+var ignores_sanctuary := false   # canyon guard ants keep attacking
 
 var _t := randf() * TAU
 var _wander_target := Vector3.ZERO
@@ -64,7 +65,14 @@ func _physics_process(delta: float) -> void:
 	var ppos: Vector3 = player.global_position
 	var dist := global_position.distance_to(ppos)
 
-	if not aggro and dist < AGGRO_RANGE:
+	# Sanctuary: main-zone ants ignore a sheltered player; the canyon
+	# guards (ignores_sanctuary) do not care
+	var player_safe: bool = (not ignores_sanctuary) \
+			and player.get("in_sanctuary") == true
+	if player_safe:
+		aggro = false
+
+	if not player_safe and not aggro and dist < AGGRO_RANGE:
 		aggro = true
 	elif aggro and dist > LOSE_RANGE:
 		aggro = false
@@ -110,7 +118,12 @@ func _physics_process(delta: float) -> void:
 
 ## Called by hit_effects for every hit taken: the ant fights back.
 func on_hit() -> void:
-	aggro = true
+	if ignores_sanctuary:
+		aggro = true
+		return
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null or player.get("in_sanctuary") != true:
+		aggro = true
 
 
 ## Called by hit_effects right before destruction: squashed remains

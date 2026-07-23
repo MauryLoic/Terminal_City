@@ -3,7 +3,7 @@ extends Area3D
 ## hurts the player on contact, splashes the scenery otherwise.
 
 const SPEED := 13.0
-const DAMAGE := 12.0
+const DAMAGE := 25.0
 
 var direction := Vector3.FORWARD
 var _life := 4.0

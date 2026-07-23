@@ -14,6 +14,8 @@ const ITEM_DEFS := {
 	"res_metal": {"short": "Scrap", "label": "Metal scraps (warbot)"},
 	"res_powder": {"short": "Powder", "label": "Chemical powder (warbot)"},
 	"res_cell": {"short": "E-core", "label": "Energy core (warbot)"},
+	"ak_part": {"short": "AK part", "label": "AK-47 part (warbot) — 10 needed"},
+	"ak": {"short": "AK-47", "label": "AK-47 assault rifle — key 1"},
 	"saber_part": {"short": "Saber pt", "label": "Laser saber part (blue bat) — 10 needed"},
 	"saber": {"short": "Saber", "label": "Laser saber — your melee weapon (key 3)"},
 	"junk": {"short": "Junk", "label": "Worthless scrap (right click: drop)"},

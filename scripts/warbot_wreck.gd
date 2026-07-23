@@ -6,10 +6,11 @@ extends RigidBody3D
 ## - Looted: the empty wreck remains 5 more seconds then vanishes.
 
 const LOOT_TABLE := [
-	["res_metal", 40],
-	["res_powder", 28],
-	["res_cell", 22],
-	["junk", 10],
+	["res_metal", 32],
+	["res_powder", 22],
+	["res_cell", 18],
+	["ak_part", 20],
+	["junk", 8],
 ]
 const LOOT_RANGE := 3.0
 const LIFE_UNLOOTED := 60.0

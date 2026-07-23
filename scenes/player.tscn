@@ -6,7 +6,7 @@
 [ext_resource type="Script" path="res://scripts/target_reticle.gd" id="4_reticle"]
 [ext_resource type="Script" path="res://scripts/laser_pistol.gd" id="5_laser"]
 [ext_resource type="Script" path="res://scripts/mob_health_bars.gd" id="6_mobbars"]
-[ext_resource type="Script" path="res://scripts/crowbar.gd" id="7_crowbar"]
+[ext_resource type="Script" path="res://scripts/rusty_knife.gd" id="7_knife"]
 [ext_resource type="Script" path="res://scripts/laser_saber.gd" id="8_saber"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
@@ -58,10 +58,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, -0.2, -0.4)
 visible = false
 script = ExtResource("5_laser")
 
-[node name="Crowbar" type="Node3D" parent="Camera3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.28, -0.45)
+[node name="Knife" type="Node3D" parent="Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.28, -0.42)
 visible = false
-script = ExtResource("7_crowbar")
+script = ExtResource("7_knife")
 
 [node name="Saber" type="Node3D" parent="Camera3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.28, -0.45)
