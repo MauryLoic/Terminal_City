@@ -7,6 +7,7 @@ extends Node
 
 const CritterScript := preload("res://scripts/critter.gd")
 const AntScript := preload("res://scripts/ant.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 const INTERIOR_COUNT := 8
 const CORRIDOR_ANTS := 3
 const RESPAWN_DELAY := 20.0
@@ -28,6 +29,7 @@ func _spawn_critter() -> void:
 	var critter := CharacterBody3D.new()
 	critter.set_script(CritterScript)
 	critter.species = SPECIES_CYCLE[_species_i % SPECIES_CYCLE.size()]
+	critter.level = MobRank.roll_level(1, 5)     # starting-zone vermin
 	_species_i += 1
 	critter.position = Vector3(randf_range(-9.0, 5.0), 6.6, randf_range(-110.0, -98.0))
 	get_tree().current_scene.add_child(critter)
@@ -49,6 +51,7 @@ func _spawn_corridor_ant() -> void:
 	var ant := CharacterBody3D.new()
 	ant.set_script(AntScript)
 	ant.ignores_sanctuary = true
+	ant.level = MobRank.roll_level(8, 14)        # canyon guards
 	ant.position = Vector3(x, y, z)
 	get_tree().current_scene.add_child(ant)
 	ant.died.connect(_on_corridor_ant_died)

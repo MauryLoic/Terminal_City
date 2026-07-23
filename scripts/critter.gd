@@ -11,6 +11,7 @@ const WANDER_SPEED := 1.0
 const FLEE_SPEED := 3.5
 const GRAVITY := 14.0
 const RemainsScript := preload("res://scripts/critter_remains.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 
 const SPECIES := {
 	"small_ant": {"name": "Small Ant", "color": Color(0.32, 0.16, 0.09)},
@@ -18,6 +19,7 @@ const SPECIES := {
 	"roach": {"name": "Roach", "color": Color(0.35, 0.2, 0.08)},
 }
 
+var level := 1   # set by the spawner before add_child
 var species := "roach"
 var home := Vector3.ZERO
 
@@ -32,17 +34,14 @@ func _ready() -> void:
 	add_to_group("mob")
 	var info: Dictionary = SPECIES.get(species, SPECIES["roach"])
 	set_meta("mat", "flesh")
-	set_meta("hp", 1.0)
-	set_meta("hp_max", 1.0)
+	MobRank.apply(self, info.name, level, 1.0, 25)
 	set_meta("bar_height", 0.55)
-	set_meta("mob_name", info.name)
 	set_meta("aim_center", 0.14)
 	set_meta("aim_half_w", 0.3)
 	set_meta("aim_half_h", 0.22)
 	set_meta("debris_color", info.color)
 	set_meta("debris_count", 5)
 	set_meta("debris_size", 0.06)
-	set_meta("xp", 25)
 	if home == Vector3.ZERO:
 		home = global_position
 	_wander_target = home

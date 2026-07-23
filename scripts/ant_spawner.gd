@@ -3,6 +3,7 @@ extends Node
 ## the map. Each squashed ant respawns 15 s later at a new random spot.
 
 const AntScript := preload("res://scripts/ant.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 const COUNT := 8
 const RESPAWN_DELAY := 15.0
 const HALF := 100.0
@@ -25,6 +26,7 @@ func _spawn() -> void:
 			continue
 		var ant := CharacterBody3D.new()
 		ant.set_script(AntScript)
+		ant.level = MobRank.roll_level(14, 26)   # main-zone ants
 		ant.position = Vector3(x, h + 0.4, z)
 		get_tree().current_scene.add_child(ant)
 		ant.died.connect(_on_ant_died)

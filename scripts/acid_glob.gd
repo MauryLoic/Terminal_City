@@ -5,6 +5,8 @@ extends Area3D
 const SPEED := 13.0
 const DAMAGE := 25.0
 
+var damage := DAMAGE   # scaled by the firing bat's level
+
 var direction := Vector3.FORWARD
 var _life := 4.0
 
@@ -43,7 +45,7 @@ func _on_body(body: Node3D) -> void:
 	if body.is_in_group("mob"):
 		return
 	if body.is_in_group("player"):
-		body.take_damage(DAMAGE)
+		body.take_damage(damage)
 	_splash()
 	queue_free()
 

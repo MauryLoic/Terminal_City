@@ -4,6 +4,7 @@ extends Node
 ## at a new random spot on the map (not tied to the player).
 
 const WarbotScript := preload("res://scripts/warbot.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 const COUNT := 7
 const RESPAWN_DELAY := 20.0
 const HALF := 100.0
@@ -27,6 +28,7 @@ func _spawn() -> void:
 			continue
 		var bot := CharacterBody3D.new()
 		bot.set_script(WarbotScript)
+		bot.level = MobRank.roll_level(24, 42)   # main-zone patrols
 		bot.position = Vector3(x, h + 0.5, z)
 		get_tree().current_scene.add_child(bot)
 		bot.died.connect(_on_warbot_died)

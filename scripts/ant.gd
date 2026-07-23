@@ -15,7 +15,9 @@ const BITE_RANGE := 1.4
 const BITE_DAMAGE := 4.0
 const BITE_COOLDOWN := 1.2
 const RemainsScript := preload("res://scripts/ant_remains.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 
+var level := 10   # set by the spawner before add_child
 var home := Vector3.ZERO
 var aggro := false
 var ignores_sanctuary := false   # canyon guard ants keep attacking
@@ -30,17 +32,14 @@ var _body: Node3D
 func _ready() -> void:
 	add_to_group("mob")
 	set_meta("mat", "flesh")
-	set_meta("hp", 2.0)
-	set_meta("hp_max", 2.0)
+	MobRank.apply(self, "Mutant Ant", level, 2.0, 80)
 	set_meta("bar_height", 0.8)
-	set_meta("mob_name", "Mutant Ant")
 	set_meta("aim_center", 0.26)
 	set_meta("aim_half_w", 0.42)
 	set_meta("aim_half_h", 0.34)
 	set_meta("debris_color", Color(0.24, 0.11, 0.06))
 	set_meta("debris_count", 6)
 	set_meta("debris_size", 0.08)
-	set_meta("xp", 80)
 	if home == Vector3.ZERO:
 		home = global_position
 	_wander_target = home
@@ -113,7 +112,7 @@ func _physics_process(delta: float) -> void:
 	# Bite on contact
 	if aggro and dist < BITE_RANGE and _bite_cd == 0.0:
 		_bite_cd = BITE_COOLDOWN
-		player.take_damage(BITE_DAMAGE)
+		player.take_damage(BITE_DAMAGE * MobRank.damage_mult(level))
 		Sfx.play_swing(global_position)
 
 

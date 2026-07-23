@@ -16,7 +16,9 @@ const FIRE_RANGE := 26.0
 const STOP_RANGE := 11.0
 const PlasmaScript := preload("res://scripts/plasma_bolt.gd")
 const WreckScript := preload("res://scripts/warbot_wreck.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 
+var level := 25   # set by the spawner before add_child
 var home := Vector3.ZERO
 var aggro := false
 
@@ -31,17 +33,14 @@ var _plate: StandardMaterial3D
 func _ready() -> void:
 	add_to_group("mob")
 	set_meta("mat", "metal")
-	set_meta("hp", 18.0)
-	set_meta("hp_max", 18.0)
+	MobRank.apply(self, "Warbot", level, 18.0, 150)
 	set_meta("bar_height", 3.0)
-	set_meta("mob_name", "Warbot")
 	set_meta("aim_center", 1.5)
 	set_meta("aim_half_w", 1.0)
 	set_meta("aim_half_h", 1.5)
 	set_meta("debris_color", Color(0.35, 0.37, 0.34))
 	set_meta("debris_count", 14)
 	set_meta("debris_size", 0.2)
-	set_meta("xp", 150)
 	if home == Vector3.ZERO:
 		home = global_position
 	_wander_target = home
@@ -125,6 +124,7 @@ func _fire_plasma(target: Vector3) -> void:
 	var origin := global_position + Vector3(0, 2.0, 0)
 	var dir := (target + Vector3(0, 0.9, 0) - origin).normalized()
 	bolt.direction = dir
+	bolt.damage = bolt.DAMAGE * MobRank.damage_mult(level)
 	bolt.position = origin + dir * 1.0
 	get_tree().current_scene.add_child(bolt)
 	Sfx.play_laser(origin)

@@ -3,10 +3,11 @@ extends Area3D
 ## contact, splashes the scenery with metal-like sparks otherwise.
 
 const SPEED := 16.0
-# One-shot on a level-1 runner (100 HP): venturing into the main zone
-# unprepared is lethal, as intended. To rebalance with the future
-# player-level system.
-const DAMAGE := 100.0
+# Base value: a low-rank warbot still one-shots a level-1 runner
+# (100 HP), while high-rank ones stay survivable for a levelled player.
+const DAMAGE := 55.0
+
+var damage := DAMAGE   # scaled by the firing warbot's level
 
 var direction := Vector3.FORWARD
 var _life := 4.0
@@ -47,7 +48,7 @@ func _on_body(body: Node3D) -> void:
 	if body.is_in_group("mob"):
 		return
 	if body.is_in_group("player"):
-		body.take_damage(DAMAGE)
+		body.take_damage(damage)
 	_splash()
 	queue_free()
 

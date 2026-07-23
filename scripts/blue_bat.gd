@@ -12,14 +12,11 @@ const FIRE_RAY_BURN := 3.0
 
 func _ready() -> void:
 	super._ready()
-	set_meta("hp", 20.0)
-	set_meta("hp_max", 20.0)
-	set_meta("mob_name", "Blue Vampire Bat")
+	MobRank.apply(self, "Blue Vampire Bat", level, 20.0, 400)
 	set_meta("debris_color", Color(0.15, 0.3, 0.7))
 	pack_id = -1        # loner: pack alerts don't concern it
 	aggro = true        # it spawned because of you — it knows
 	_fur.albedo_color = Color(0.16, 0.28, 0.6)
-	set_meta("xp", 400)
 
 
 ## Attack override: 50% regular acid glob, 50% fire ray.

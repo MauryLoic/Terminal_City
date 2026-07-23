@@ -14,9 +14,11 @@ const ORBIT_RADIUS := 9.0
 const ATTACK_RANGE := 30.0
 const AGGRO_RANGE := 14.0    # trigger distance
 const LOSE_RANGE := 45.0     # disengage distance
+const MobRank := preload("res://scripts/mob_rank.gd")
 const AcidScript := preload("res://scripts/acid_glob.gd")
 const CorpseScript := preload("res://scripts/corpse.gd")
 
+var level := 15              # set by the spawner before add_child
 var pack_id := 0             # members of the same pack share this id
 var home := Vector3.ZERO     # patrol center (set by the spawner)
 var aggro := false
@@ -33,17 +35,14 @@ func _ready() -> void:
 	add_to_group("bat")
 	add_to_group("mob")
 	set_meta("mat", "flesh")
-	set_meta("hp", 8.0)
-	set_meta("hp_max", 8.0)
+	MobRank.apply(self, "Vampire Bat", level, 8.0, 90)
 	set_meta("bar_height", 1.0)
-	set_meta("mob_name", "Vampire Bat")
 	set_meta("aim_center", 0.0)
 	set_meta("aim_half_w", 1.1)
 	set_meta("aim_half_h", 0.8)
 	set_meta("debris_color", Color(0.25, 0.18, 0.16))
 	set_meta("debris_count", 8)
 	set_meta("debris_size", 0.1)
-	set_meta("xp", 90)
 	if home == Vector3.ZERO:
 		home = global_position
 	_build_model()
@@ -140,6 +139,7 @@ func _spit_acid(target: Vector3) -> void:
 	glob.set_script(AcidScript)
 	var dir := (target + Vector3(0, 0.9, 0) - global_position).normalized()
 	glob.direction = dir
+	glob.damage = glob.DAMAGE * MobRank.damage_mult(level)
 	glob.position = global_position + dir * 0.8
 	get_tree().current_scene.add_child(glob)
 	Sfx.play_acid(global_position)

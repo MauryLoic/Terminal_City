@@ -19,7 +19,16 @@ const PISTOL_AMMO_RESPAWN := 15
 const PISTOL_FIRE_CD := 0.35    # semi-auto: one shot per click
 const PISTOL_SPREAD_MAX := 0.09
 const PISTOL_SPREAD_MIN := 0.012
-const MAX_LEVEL := 30
+const MAX_LEVEL := 60
+# Weapon tech levels feed the combat rank, exactly as a Neocron runner's
+# rank shifts with the weapon in hand.
+const WEAPON_TL := {
+	"melee": 3,
+	"pistol": 10,
+	"ak": 30,
+	"laser": 40,
+	"saber": 52,
+}
 const FOV_ZOOM := 48.0       # aimed-in field of view (right click held)
 const ZOOM_SPEED := 10.0     # FOV transition speed
 const ZOOM_SENS_FACTOR := 0.6  # mouse sensitivity multiplier while zoomed
@@ -48,6 +57,7 @@ const BulletScript := preload("res://scripts/bullet.gd")
 const LaserBeamScript := preload("res://scripts/laser_beam.gd")
 const HitEffects := preload("res://scripts/hit_effects.gd")
 const DroppedItemScript := preload("res://scripts/dropped_item.gd")
+const MobRank := preload("res://scripts/mob_rank.gd")
 const DEATH_DROP_CHANCE := 0.5   # per item unit
 const DEATH_DROP_LIFETIME := 240.0
 
@@ -442,6 +452,8 @@ func _owns_laser() -> bool:
 
 
 func _update_weapon_ui() -> void:
+	if level_label != null:
+		_update_level_ui()   # the combat rank follows the weapon in hand
 	var slot := weapon_idx + 1
 	match current_weapon():
 		"ak":
@@ -539,20 +551,23 @@ func max_health() -> float:
 	return MAX_HEALTH + float(level - 1) * 10.0
 
 
-## Damage multiplier granted by the level (+5% per level).
+## Damage multiplier granted by the level (+8% per level), tuned to
+## keep pace with the mob rank ladder.
 func damage_mult() -> float:
-	return 1.0 + float(level - 1) * 0.05
+	return 1.0 + float(level - 1) * 0.08
 
 
+## XP needed for the next level: gentle at first, steeper later so the
+## 60-level ladder keeps pace with the mob ranks.
 func xp_to_next() -> int:
-	return 30 + (level - 1) * 10
+	return 30 + (level - 1) * 14 + int(pow(float(level), 1.7))
 
 
 ## Experience reward, awarded by hit_effects when a mob dies.
-func gain_xp(amount: int) -> void:
+func gain_xp(amount: int, mob_rank := 1) -> void:
 	if level >= MAX_LEVEL:
 		return
-	xp += amount
+	xp += int(roundf(float(amount) * MobRank.xp_factor(mob_rank, combat_rank())))
 	while level < MAX_LEVEL and xp >= xp_to_next():
 		xp -= xp_to_next()
 		level += 1
@@ -562,7 +577,7 @@ func gain_xp(amount: int) -> void:
 
 
 func _update_level_ui() -> void:
-	level_label.text = "LEVEL %d" % level
+	level_label.text = "RANK %s" % MobRank.runner_rank_text(combat_rank(), base_rank())
 	xp_bar.max_value = xp_to_next()
 	xp_bar.value = xp
 	health_bar.max_value = max_health()
@@ -610,3 +625,21 @@ func _scatter_death_loot(pos: Vector3) -> void:
 		drop.lifetime = DEATH_DROP_LIFETIME
 		drop.position = pos + Vector3(cos(ang) * r, 0.5, sin(ang) * r)
 		scene.add_child(drop)
+
+
+## Base rank: in Neocron this is the average of the runner's ability
+## scores. With no ability sheet yet, the character level stands in for
+## it — the implant/stat screen will refine this later.
+func base_rank() -> int:
+	return level
+
+
+## Combat rank: a blend of the equipped weapon's tech level and the
+## runner's combat progression. Swapping to a weaker weapon lowers it,
+## exactly like in Neocron.
+func combat_rank() -> int:
+	var wk := current_weapon()
+	if wk == "melee" and _owns_saber():
+		wk = "saber"
+	var tl: int = int(WEAPON_TL.get(wk, 3))
+	return clampi(int(roundf(float(level) * 0.55 + float(tl) * 0.45)), 0, MAX_LEVEL)

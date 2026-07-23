@@ -48,7 +48,7 @@ static func _destroy_object(ctx: Node, obj: Node3D) -> void:
 	if obj.has_meta("xp"):
 		var player := ctx.get_tree().get_first_node_in_group("player")
 		if player and player.has_method("gain_xp"):
-			player.gain_xp(int(obj.get_meta("xp")))
+			player.gain_xp(int(obj.get_meta("xp")), int(obj.get_meta("mob_level", 1)))
 	if obj.has_method("on_destroyed"):
 		obj.on_destroyed()
 	obj.queue_free()
