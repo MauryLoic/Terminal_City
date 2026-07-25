@@ -30,6 +30,11 @@ const ITEM_DEFS := {
 const DroppedItemScript := preload("res://scripts/dropped_item.gd")
 
 @onready var grid: GridContainer = $Center/Panel/VBox/Grid
+@onready var _up: Button = $Center/Panel/VBox/Pager/Up
+@onready var _down: Button = $Center/Panel/VBox/Pager/Down
+@onready var _page_label: Label = $Center/Panel/VBox/Pager/PageLabel
+
+var _page := 0
 
 var _slots: Array[Panel] = []
 
@@ -45,8 +50,34 @@ func _ready() -> void:
 		grid.add_child(c)
 		_slots.append(c)
 	$Center/Panel/VBox/Bottom/Craft.pressed.connect(_on_craft_pressed)
+	_up.pressed.connect(_page_up)
+	_down.pressed.connect(_page_down)
 	Inventory.changed.connect(_refresh)
 	_refresh()
+
+
+func _page_up() -> void:
+	if _page > 0:
+		_page -= 1
+		_refresh()
+
+
+func _page_down() -> void:
+	if (_page + 1) * SLOTS < _all_stacks().size():
+		_page += 1
+		_refresh()
+
+
+## All visible stacks across the whole inventory (id split into 5s).
+func _all_stacks() -> Array:
+	var stacks: Array = []
+	for id in Inventory.items.keys():
+		var total := int(Inventory.items[id])
+		while total > 0:
+			var q: int = min(total, Inventory.STACK_MAX)
+			stacks.append({"id": id, "qty": q})
+			total -= q
+	return stacks
 
 
 func is_open() -> bool:
@@ -107,29 +138,30 @@ func _item_def(id: String) -> Dictionary:
 
 
 func _refresh() -> void:
-	# Build the visible stacks: each id split into stacks of 5, Neocron
-	# style (12 medkits -> 5 + 5 + 2 across three cells).
-	var stacks: Array = []
-	for id in Inventory.items.keys():
-		var total := int(Inventory.items[id])
-		while total > 0:
-			var q: int = min(total, Inventory.STACK_MAX)
-			stacks.append({"id": id, "qty": q})
-			total -= q
+	var stacks := _all_stacks()
+	# Clamp the page if items were removed
+	var pages: int = max(1, int(ceil(float(stacks.size()) / float(SLOTS))))
+	_page = clampi(_page, 0, pages - 1)
+	var start := _page * SLOTS
 
 	for i in SLOTS:
 		var c := _slots[i]
-		if i < stacks.size():
-			var id: String = stacks[i].id
+		var gi := start + i
+		if gi < stacks.size():
+			var id: String = stacks[gi].id
 			var d := _item_def(id)
 			c.item_id = id
-			c.stack_qty = int(stacks[i].qty)
+			c.stack_qty = int(stacks[gi].qty)
 			c.tooltip_text = str(d.get("label", id)) + "\nClick: use/equip   Drag: to hotbar   Right click: drop"
 		else:
 			c.item_id = ""
 			c.stack_qty = 0
 			c.tooltip_text = ""
 		c.queue_redraw()
+
+	_page_label.text = "%d/%d" % [_page + 1, pages]
+	_up.disabled = _page == 0
+	_down.disabled = _page >= pages - 1
 
 
 ## Moves a consumable stack (up to 5) from the inventory onto the

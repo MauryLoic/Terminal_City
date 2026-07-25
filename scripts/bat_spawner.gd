@@ -7,8 +7,8 @@ const BatScript := preload("res://scripts/bat.gd")
 const BlueBatScript := preload("res://scripts/blue_bat.gd")
 const MobRank := preload("res://scripts/mob_rank.gd")
 const BLUE_EVERY := 6   # every N bat kills, a blue mini-boss appears
-const RESPAWN_DELAY := 10.0
-const PACK_COUNT := 2        # number of packs (2 packs = 4 bats)
+const RESPAWN_DELAY := 6.0
+const PACK_COUNT := 4        # number of packs (4 packs = 8 bats)
 const MIN_DIST := 22.0
 const MAX_DIST := 40.0
 
@@ -20,6 +20,22 @@ var _packs := {}             # pack_id -> number alive
 func _ready() -> void:
 	for i in PACK_COUNT:
 		_spawn_pack()
+	var t := Timer.new()
+	t.wait_time = 5.0
+	t.autostart = true
+	t.timeout.connect(_maintain)
+	add_child(t)
+
+
+func _maintain() -> void:
+	# Keep at least PACK_COUNT*2 bats roaming the main zone
+	var alive := 0
+	for n in get_tree().get_nodes_in_group("bat"):
+		alive += 1
+	var want := PACK_COUNT * 2
+	while alive < want:
+		_spawn_pack()
+		alive += 2
 
 
 func _spawn_pack() -> void:
@@ -28,13 +44,13 @@ func _spawn_pack() -> void:
 		return
 	var world := get_tree().current_scene.get_node_or_null("World")
 
-	var angle := randf_range(0.0, TAU)
-	var dist := randf_range(MIN_DIST, MAX_DIST)
-	var x: float = clampf(player.global_position.x + cos(angle) * dist, -110.0, 110.0)
-	var z: float = clampf(player.global_position.z + sin(angle) * dist, -110.0, 110.0)
-	var y := 10.0
+	# Packs roam the main zone (south of the mountains), placed over the
+	# open bowl rather than around the player so they are always there
+	var x := randf_range(-95.0, 95.0)
+	var z := randf_range(-95.0, 45.0)
+	var y := 12.0
 	if world:
-		y = world.get_height(x, z) + randf_range(5.0, 8.0)
+		y = world.get_height(x, z) + randf_range(6.0, 10.0)
 	var base := Vector3(x, y, z)
 
 	var pid := _next_pack_id
