@@ -443,11 +443,26 @@ func _die() -> void:
 
 ## --- Weapon system ---
 
+## True if the player owns a weapon, wherever it currently sits:
+## inventory grid, hotbar cell, or already-equipped weapons list.
+func _owns_weapon_id(id: String) -> bool:
+	if int(Inventory.items.get(id, 0)) > 0:
+		return true
+	for j in Hotbar.SLOT_COUNT:
+		var sd := Hotbar.get_slot(j)
+		if str(sd.get("kind", "")) == "weapon" and str(sd.get("id", "")) == id:
+			return true
+	return false
+
+
 func _owns_laser() -> bool:
 	for id in Inventory.items:
 		if String(id).begins_with("laser_slots_"):
 			return true
-	return false
+	for j in Hotbar.SLOT_COUNT:
+		if str(Hotbar.get_slot(j).get("id", "")).begins_with("laser_slots_"):
+			return true
+	return weapons.has("laser")
 
 
 func _update_weapon_ui() -> void:
@@ -527,7 +542,7 @@ func _melee_attack() -> void:
 
 
 func _owns_saber() -> bool:
-	return int(Inventory.items.get("saber", 0)) > 0
+	return _owns_weapon_id("saber") or weapons.has("saber")
 
 
 ## Fire ray hit (blue bat): burn for the given duration (stacks by
@@ -537,7 +552,7 @@ func apply_burn(duration := 3.0) -> void:
 
 
 func _owns_ak() -> bool:
-	return int(Inventory.items.get("ak", 0)) > 0
+	return _owns_weapon_id("ak") or weapons.has("ak")
 
 
 ## --- Player progression ---
@@ -594,8 +609,8 @@ func _use_hotbar_slot(index: int) -> void:
 	var slot: Dictionary = Hotbar.get_slot(index)
 	if slot.is_empty():
 		return
-	var id: String = slot.get("id", "")
-	if slot.get("kind", "") == "weapon":
+	var id: String = str(slot.get("id", ""))
+	if str(slot.get("kind", "")) == "weapon":
 		# Select the weapon; equip it into a firing slot if not already
 		var wk := _weapon_kind_of(id)
 		var i := weapons.find(wk)
@@ -606,8 +621,8 @@ func _use_hotbar_slot(index: int) -> void:
 			Sfx.play_click()
 			_update_weapon_ui()
 	else:
-		# Consumable: use one unit if we still own any
-		_use_consumable(id)
+		# Consumable: consume one unit straight from this cell
+		_use_consumable_from_hotbar(index, id)
 
 
 ## Maps an inventory id to the firing-slot weapon key.
@@ -621,14 +636,16 @@ func _weapon_kind_of(id: String) -> String:
 	return "melee"   # knife or saber both ride the melee slot
 
 
-func _use_consumable(id: String) -> void:
+func _use_consumable_from_hotbar(index: int, id: String) -> void:
 	# The heal value lives in inventory_ui's item table (single source
-	# of truth), so the hotbar and the inventory always agree.
+	# of truth). The unit is taken from the hotbar cell itself.
 	var inv := get_tree().get_first_node_in_group("inventory_ui")
 	if inv == null:
 		return
 	var amount := float(inv._item_def(id).get("heal", 0.0))
-	if amount > 0.0 and health < max_health() and Inventory.remove_item(id):
+	if amount <= 0.0 or health >= max_health():
+		return
+	if Hotbar.take_one(index) != "":
 		heal(amount)
 
 
@@ -643,6 +660,46 @@ func equip_weapon(kind: String) -> void:
 	weapon_idx = i
 	Sfx.play_click()
 	_update_weapon_ui()
+
+
+## Removes a weapon from the equipped firing slots (called when it is
+## returned to the inventory from the hotbar). If it was the weapon in
+## hand, we fall back to the rusty knife so nothing stays visible in the
+## player's hands.
+func unequip_weapon(id: String) -> void:
+	var wk := _weapon_kind_of(id)
+	if wk == "melee":
+		return   # the knife slot is permanent
+	var i := weapons.find(wk)
+	if i < 0:
+		return
+	var was_active := (weapon_idx == i)
+	weapons.remove_at(i)
+	# Reindex: keep pointing at the same weapon, or fall back to slot 0
+	if was_active:
+		weapon_idx = 0            # back to the knife
+	elif weapon_idx > i:
+		weapon_idx -= 1
+	# Reset any pending burst so the old gun stops firing
+	_burst_left = 0
+	Sfx.play_click()
+	_update_weapon_ui()
+
+
+## Puts a weapon on the quickbar if not already there (first free slot).
+## Returns true if it was newly placed (so the caller can remove it from
+## the inventory grid), false if it was already on the bar or the bar is
+## full.
+func hotbar_add_weapon(id: String) -> bool:
+	for j in Hotbar.SLOT_COUNT:
+		var sd := Hotbar.get_slot(j)
+		if str(sd.get("kind", "")) == "weapon" and str(sd.get("id", "")) == id:
+			return false
+	var free := Hotbar.first_free()
+	if free >= 0:
+		Hotbar.assign_weapon(free, id)
+		return true
+	return false
 
 
 ## Death loot: every stackable item unit gets a coin flip to fall on

@@ -15,11 +15,11 @@ const ITEM_DEFS := {
 	"res_powder": {"short": "Powder", "label": "Chemical powder (warbot)"},
 	"res_cell": {"short": "E-core", "label": "Energy core (warbot)"},
 	"res_casing": {"short": "Casing", "label": "Spent casings (base critters) — pistol ammo"},
-	"pistol": {"short": "Pistol", "label": "Crude pistol — click to equip", "equip": "pistol"},
+	"pistol": {"short": "Pistol", "label": "Crude pistol — click or drag to the hotbar", "equip": "pistol"},
 	"ak_part": {"short": "AK part", "label": "AK-47 part (warbot) — 10 needed"},
-	"ak": {"short": "AK-47", "label": "AK-47 assault rifle — click to equip", "equip": "ak"},
+	"ak": {"short": "AK-47", "label": "AK-47 assault rifle — click or drag to the hotbar", "equip": "ak"},
 	"saber_part": {"short": "Saber pt", "label": "Laser saber part (blue bat) — 10 needed"},
-	"saber": {"short": "Saber", "label": "Laser saber — click to equip (melee)", "equip": "melee"},
+	"saber": {"short": "Saber", "label": "Laser saber — click or drag to the hotbar", "equip": "melee"},
 	"junk": {"short": "Junk", "label": "Worthless scrap (right click: drop)"},
 	"medkit": {"short": "Med", "label": "Medkit (+40 HP)", "heal": 40.0},
 	"medkit_petit": {"short": "Med S", "label": "Medkit S (+40 HP)", "heal": 40.0},
@@ -31,20 +31,19 @@ const DroppedItemScript := preload("res://scripts/dropped_item.gd")
 
 @onready var grid: GridContainer = $Center/Panel/VBox/Grid
 
-var _slots: Array[Button] = []
+var _slots: Array[Panel] = []
 
 
 func _ready() -> void:
 	add_to_group("inventory_ui")
 	$Center.visible = false
 	for i in SLOTS:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(66, 66)
-		b.disabled = true
-		b.pressed.connect(_on_slot_pressed.bind(i))
-		b.gui_input.connect(_on_slot_gui_input.bind(i))
-		grid.add_child(b)
-		_slots.append(b)
+		var c := InvCell.new()
+		c.index = i
+		c.ui = self
+		c.custom_minimum_size = Vector2(66, 66)
+		grid.add_child(c)
+		_slots.append(c)
 	$Center/Panel/VBox/Bottom/Craft.pressed.connect(_on_craft_pressed)
 	Inventory.changed.connect(_refresh)
 	_refresh()
@@ -52,6 +51,39 @@ func _ready() -> void:
 
 func is_open() -> bool:
 	return $Center.visible
+
+
+## Hotbar "kind" for an item id, or "" if it cannot go on the quickbar
+## (junk, components and resources are excluded).
+func hotbar_kind(id: String) -> String:
+	var d := _item_def(id)
+	if d.has("heal"):
+		return "consumable"
+	if d.has("equip") or id == "ak" or id == "pistol" or id == "saber" \
+			or id.begins_with("ak_slots_") or id.begins_with("laser_slots_"):
+		return "weapon"
+	return ""
+
+
+## Left click on an item cell: use a medkit or equip a weapon.
+func use_item(id: String) -> void:
+	var d := _item_def(id)
+	if d.has("heal"):
+		# Medkits are consumed from the hotbar. Clicking one moves a
+		# stack (up to 5) onto the bar so it can be triggered by key.
+		_move_consumable_to_hotbar(id)
+	elif d.has("equip"):
+		# Clicking a weapon just moves it onto the bar (out of the grid);
+		# it is NOT drawn yet — trigger its hotbar slot to equip it.
+		var player := get_tree().get_first_node_in_group("player")
+		if player and player.hotbar_add_weapon(id):
+			Inventory.remove_item(id)
+
+
+## Right click on an item cell: drop one unit on the ground.
+func drop_item(id: String) -> void:
+	if Inventory.remove_item(id):
+		_spawn_drop(id)
 
 
 ## Item definition, including crafted "ak_slots_N" weapons.
@@ -68,71 +100,53 @@ func _item_def(id: String) -> Dictionary:
 		var n := int(id.trim_prefix("laser_slots_"))
 		return {
 			"short": "Laser [%d]" % n,
-			"label": "Handcrafted laser pistol — %d upgrade slot%s (click to equip)" % [n, "s" if n > 1 else ""],
+			"label": "Handcrafted laser pistol — %d upgrade slot%s (click or drag to hotbar)" % [n, "s" if n > 1 else ""],
 			"equip": "laser",
 		}
 	return {"short": id, "label": id}
 
 
 func _refresh() -> void:
-	var ids := Inventory.items.keys()
+	# Build the visible stacks: each id split into stacks of 5, Neocron
+	# style (12 medkits -> 5 + 5 + 2 across three cells).
+	var stacks: Array = []
+	for id in Inventory.items.keys():
+		var total := int(Inventory.items[id])
+		while total > 0:
+			var q: int = min(total, Inventory.STACK_MAX)
+			stacks.append({"id": id, "qty": q})
+			total -= q
+
 	for i in SLOTS:
-		var b := _slots[i]
-		if i < ids.size():
-			var id: String = ids[i]
+		var c := _slots[i]
+		if i < stacks.size():
+			var id: String = stacks[i].id
 			var d := _item_def(id)
-			b.text = "%s\nx%d" % [d.get("short", id), Inventory.items[id]]
-			b.disabled = false
-			b.tooltip_text = str(d.get("label", id)) + "\nClick: use/equip (adds to hotbar)   Right click: drop"
+			c.item_id = id
+			c.stack_qty = int(stacks[i].qty)
+			c.tooltip_text = str(d.get("label", id)) + "\nClick: use/equip   Drag: to hotbar   Right click: drop"
 		else:
-			b.text = ""
-			b.disabled = true
-			b.tooltip_text = ""
+			c.item_id = ""
+			c.stack_qty = 0
+			c.tooltip_text = ""
+		c.queue_redraw()
 
 
-func _on_slot_pressed(i: int) -> void:
-	var ids := Inventory.items.keys()
-	if i >= ids.size():
+## Moves a consumable stack (up to 5) from the inventory onto the
+## hotbar: an existing matching stack is topped up first, otherwise the
+## first free slot is used. Accepted units leave the inventory.
+func _move_consumable_to_hotbar(id: String) -> void:
+	var have := Inventory.count(id)
+	if have <= 0:
 		return
-	var id: String = ids[i]
-	var d := _item_def(id)
-	if d.has("heal"):
-		var player := get_tree().get_first_node_in_group("player")
-		# A medkit also earns a quickbar slot the first time you use it,
-		# so it can be re-triggered by its number key afterwards
-		_ensure_on_hotbar("consumable", id)
-		if player and player.health < player.max_health() \
-				and Inventory.remove_item(id):
-			player.heal(d.heal)
-	elif d.has("equip"):
-		# Weapons: clicking equips them, and drops them onto the first
-		# free quickbar slot if they are not already on the bar
-		var player := get_tree().get_first_node_in_group("player")
-		if player:
-			player.equip_weapon(str(d.equip))
-			_ensure_on_hotbar("weapon", id)
-
-
-## Puts an item on the quickbar if it is not already there, choosing
-## the first free slot. Weapons and medkits both go through here so a
-## single click both uses the item and binds its hotkey.
-func _ensure_on_hotbar(kind: String, id: String) -> void:
-	for i in Hotbar.SLOT_COUNT:
-		if Hotbar.get_slot(i).get("id", "") == id:
-			return
-	var free := Hotbar.first_free()
-	if free >= 0:
-		Hotbar.assign(free, kind, id)
-
-
-## Right click: drop one unit of the item — it appears on the ground in
-## front of the player, stays 30 s (pickable again) then disappears.
-func _on_slot_gui_input(event: InputEvent, i: int) -> void:
-	if event is InputEventMouseButton and event.pressed \
-			and event.button_index == MOUSE_BUTTON_RIGHT:
-		var ids := Inventory.items.keys()
-		if i < ids.size() and Inventory.remove_item(ids[i]):
-			_spawn_drop(ids[i])
+	var target := Hotbar.find_consumable_space(id)
+	if target < 0:
+		target = Hotbar.first_free()
+	if target < 0:
+		return
+	var accepted := Hotbar.add_consumable(target, id, have)
+	if accepted > 0:
+		Inventory.remove_item(id, accepted)
 
 
 func _spawn_drop(id: String) -> void:
@@ -176,3 +190,65 @@ func _unhandled_input(event: InputEvent) -> void:
 			and event.physical_keycode == KEY_ESCAPE and $Center.visible:
 		close()
 		get_viewport().set_input_as_handled()
+
+
+## An inventory cell: draws its item, handles click (use/equip),
+## right click (drop) and drag (to the hotbar). Replaces the old
+## Button so that dragging works reliably.
+class InvCell:
+	extends Panel
+
+	var index := 0
+	var item_id := ""
+	var stack_qty := 0
+	var ui: Node = null
+
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+
+	func _draw() -> void:
+		var font := ThemeDB.fallback_font
+		var rect := Rect2(Vector2.ZERO, size)
+		draw_rect(rect, Color(0.08, 0.09, 0.1, 0.85))
+		draw_rect(rect, Color(0.3, 0.32, 0.35, 0.9), false, 1.0)
+		if item_id == "":
+			return
+		var d: Dictionary = ui._item_def(item_id)
+		var short := str(d.get("short", item_id))
+		draw_string(font, Vector2(6, 26), short,
+				HORIZONTAL_ALIGNMENT_LEFT, size.x - 10, 13, Color(0.92, 0.9, 0.85))
+		var cnt := "x%d" % stack_qty
+		var cw := font.get_string_size(cnt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		draw_string(font, Vector2(size.x - cw - 5, size.y - 6), cnt,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.8, 0.82, 0.6))
+
+
+	func _gui_input(event: InputEvent) -> void:
+		if item_id == "":
+			return
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				ui.use_item(item_id)
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				ui.drop_item(item_id)
+
+
+	## Start a drag if the item can live on the hotbar.
+	func _get_drag_data(_pos: Vector2) -> Variant:
+		if item_id == "":
+			return null
+		var kind: String = ui.hotbar_kind(item_id)
+		if kind == "":
+			return null
+		var prev := Panel.new()
+		prev.size = Vector2(52, 52)
+		var lbl := Label.new()
+		var d: Dictionary = ui._item_def(item_id)
+		lbl.text = str(d.get("short", item_id))
+		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.position = Vector2(5, 16)
+		prev.add_child(lbl)
+		set_drag_preview(prev)
+		return {"source": "inventory", "kind": kind, "id": item_id}

@@ -88,6 +88,13 @@ spring_length = 3.5
 
 [node name="TPCamera" type="Camera3D" parent="Camera3D/SpringArm3D"]
 
+[node name="HotbarLayer" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="HotbarUI" type="Control" parent="HotbarLayer"]
+mouse_filter = 2
+script = ExtResource("9_hotbar")
+
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="Crosshair" type="Label" parent="HUD"]
@@ -157,10 +164,6 @@ offset_top = -128.0
 offset_right = 320.0
 offset_bottom = -104.0
 text = "AK — BURST x3"
-
-[node name="HotbarUI" type="Control" parent="HUD"]
-mouse_filter = 2
-script = ExtResource("9_hotbar")
 
 [node name="MobBars" type="Control" parent="HUD"]
 anchor_right = 1.0
