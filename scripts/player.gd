@@ -152,15 +152,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			and event.physical_keycode == KEY_C:
 		_crouch_toggled = not _crouch_toggled
 
-	# Keys 1..5: select a weapon slot. Slots are filled by clicking
-	# weapons in the inventory, so an empty key simply does nothing.
+	# Keys 1..9 then 0: trigger the matching quickbar slot. A weapon
+	# slot equips/selects that weapon; a consumable slot uses one unit.
 	if event is InputEventKey and event.pressed and not event.echo:
-		var keys := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5]
+		var keys := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5,
+				KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
 		var slot := keys.find(event.physical_keycode)
-		if slot >= 0 and slot < weapons.size() and slot != weapon_idx:
-			weapon_idx = slot
-			Sfx.play_click()
-			_update_weapon_ui()
+		if slot >= 0:
+			_use_hotbar_slot(slot)
 
 
 	# Escape: release / recapture the mouse
@@ -585,6 +584,54 @@ func _update_level_ui() -> void:
 
 ## Called when a weapon is clicked in the inventory: it takes the first
 ## free key slot (1..5), or is simply re-selected if already equipped.
+## Triggers a quickbar slot by its index (0..9). Weapons are selected,
+## consumables (medkits) are used one unit at a time.
+func use_hotbar_slot(index: int) -> void:
+	_use_hotbar_slot(index)
+
+
+func _use_hotbar_slot(index: int) -> void:
+	var slot: Dictionary = Hotbar.get_slot(index)
+	if slot.is_empty():
+		return
+	var id: String = slot.get("id", "")
+	if slot.get("kind", "") == "weapon":
+		# Select the weapon; equip it into a firing slot if not already
+		var wk := _weapon_kind_of(id)
+		var i := weapons.find(wk)
+		if i < 0:
+			equip_weapon(wk)
+		else:
+			weapon_idx = i
+			Sfx.play_click()
+			_update_weapon_ui()
+	else:
+		# Consumable: use one unit if we still own any
+		_use_consumable(id)
+
+
+## Maps an inventory id to the firing-slot weapon key.
+func _weapon_kind_of(id: String) -> String:
+	if id == "ak" or id.begins_with("ak_slots_"):
+		return "ak"
+	if id == "laser" or id.begins_with("laser_slots_"):
+		return "laser"
+	if id == "pistol":
+		return "pistol"
+	return "melee"   # knife or saber both ride the melee slot
+
+
+func _use_consumable(id: String) -> void:
+	# The heal value lives in inventory_ui's item table (single source
+	# of truth), so the hotbar and the inventory always agree.
+	var inv := get_tree().get_first_node_in_group("inventory_ui")
+	if inv == null:
+		return
+	var amount := float(inv._item_def(id).get("heal", 0.0))
+	if amount > 0.0 and health < max_health() and Inventory.remove_item(id):
+		heal(amount)
+
+
 func equip_weapon(kind: String) -> void:
 	var i := weapons.find(kind)
 	if i < 0:

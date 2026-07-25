@@ -83,7 +83,7 @@ func _refresh() -> void:
 			var d := _item_def(id)
 			b.text = "%s\nx%d" % [d.get("short", id), Inventory.items[id]]
 			b.disabled = false
-			b.tooltip_text = str(d.get("label", id)) + "\nRight click: drop"
+			b.tooltip_text = str(d.get("label", id)) + "\nClick: use/equip (adds to hotbar)   Right click: drop"
 		else:
 			b.text = ""
 			b.disabled = true
@@ -98,14 +98,31 @@ func _on_slot_pressed(i: int) -> void:
 	var d := _item_def(id)
 	if d.has("heal"):
 		var player := get_tree().get_first_node_in_group("player")
+		# A medkit also earns a quickbar slot the first time you use it,
+		# so it can be re-triggered by its number key afterwards
+		_ensure_on_hotbar("consumable", id)
 		if player and player.health < player.max_health() \
 				and Inventory.remove_item(id):
 			player.heal(d.heal)
 	elif d.has("equip"):
-		# Weapons: clicking equips them on the first free key slot
+		# Weapons: clicking equips them, and drops them onto the first
+		# free quickbar slot if they are not already on the bar
 		var player := get_tree().get_first_node_in_group("player")
 		if player:
 			player.equip_weapon(str(d.equip))
+			_ensure_on_hotbar("weapon", id)
+
+
+## Puts an item on the quickbar if it is not already there, choosing
+## the first free slot. Weapons and medkits both go through here so a
+## single click both uses the item and binds its hotkey.
+func _ensure_on_hotbar(kind: String, id: String) -> void:
+	for i in Hotbar.SLOT_COUNT:
+		if Hotbar.get_slot(i).get("id", "") == id:
+			return
+	var free := Hotbar.first_free()
+	if free >= 0:
+		Hotbar.assign(free, kind, id)
 
 
 ## Right click: drop one unit of the item — it appears on the ground in
