@@ -19,11 +19,10 @@ const RECIPES := [
 		"type": "soin",
 	},
 	{
-		"nom": "Pistol rounds x20 (base only)",
+		"nom": "Pistol rounds x20",
 		"compos": {"res_casing": 3},
 		"chance": 0.85,
 		"type": "ammo_pistol",
-		"zone": "base",
 	},
 	{
 		"nom": "AK rounds x30",

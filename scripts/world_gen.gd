@@ -24,6 +24,8 @@ const BASE_RADIUS := 15.0
 const BASE_FLOOR := 6.0
 const PATH_HALF_WIDTH := 3.5
 
+const CrateScript := preload("res://scripts/supply_crate.gd")
+
 const BUILDING_COUNT := 4
 const SHACK_COUNT := 5
 const JUNK_COUNT := 30
@@ -224,6 +226,8 @@ func _scatter_props() -> void:
 			b.position = p - Vector3(0, 0.2, 0)
 			b.rotation.y = _rng.randf_range(0.0, TAU)
 			add_child(b)
+			# Supply crates stashed against the walls
+			_spawn_crates_around(p, 2)
 
 	for i in SHACK_COUNT:
 		var p := _find_flat_spot(half * 0.9, 2.5, 30)
@@ -232,6 +236,7 @@ func _scatter_props() -> void:
 			s.position = p - Vector3(0, 0.2, 0)
 			s.rotation.y = _rng.randf_range(0.0, TAU)
 			add_child(s)
+			_spawn_crates_around(p, 1)
 
 	for i in TREE_COUNT:
 		var p := _random_ground_point(half)
@@ -641,6 +646,15 @@ func _build_army_base() -> void:
 		_add_block(b, Vector3(0.45, 0.5, 0.06), Vector3(dx, 0.73, -4.18), dark)
 		_add_block(b, Vector3(0.08, 0.45, 0.08), Vector3(dx, 0.22, -4.4), dark)
 
+	# Two openable supply crates stored inside the bunker
+	# (y offset clears the 0.3 m concrete floor slab)
+	for cp: Vector3 in [Vector3(-9.5, 0.3, -1.5), Vector3(3.5, 0.3, 4.5)]:
+		var crate := StaticBody3D.new()
+		crate.set_script(CrateScript)
+		crate.position = b.position + cp
+		crate.rotation.y = randf_range(0.0, TAU)
+		add_child(crate)
+
 	# Army crate stacks
 	for cp: Vector3 in [Vector3(8.5, 0.35, -5.5), Vector3(8.5, 0.35, -4.4), Vector3(8.5, 1.05, -5.0), Vector3(-9.0, 0.35, 3.0)]:
 		_add_block(b, Vector3(1.2, 0.7, 0.7), cp, army_green)
@@ -729,3 +743,23 @@ func _build_canyon_gate() -> void:
 ## ammo can only be crafted here.
 func is_in_base(p: Vector3) -> bool:
 	return Vector2(p.x, p.z - BASE_CENTER_Z).length() < BASE_RADIUS + 6.0
+
+
+## Drops a few supply crates in a ring around a building, snapped to
+## the ground and kept out of the toxic river.
+func _spawn_crates_around(center: Vector3, count: int) -> void:
+	for i in count:
+		for attempt in 12:
+			var ang := _rng.randf_range(0.0, TAU)
+			var r := _rng.randf_range(4.0, 7.5)
+			var x := center.x + cos(ang) * r
+			var z := center.z + sin(ang) * r
+			var h := get_height(x, z)
+			if h <= WATER_Y + 0.6:
+				continue
+			var crate := StaticBody3D.new()
+			crate.set_script(CrateScript)
+			crate.position = Vector3(x, h, z)
+			crate.rotation.y = _rng.randf_range(0.0, TAU)
+			add_child(crate)
+			break
