@@ -64,12 +64,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			and event.physical_keycode == KEY_E and not event.alt_pressed:
 		var player := get_tree().get_first_node_in_group("player")
 		if player and global_position.distance_to(player.global_position) < LOOT_RANGE:
-			for id in loot:
-				Inventory.add_item(id, loot[id])
-			_looted = true
-			_label.visible = false
-			_despawn = minf(_despawn, LIFE_AFTER_LOOT)
-			Sfx.play_click()
+			if not LootWindow.is_open():
+				LootWindow.open(self, loot, "Warbot wreck")
+				_label.visible = false
+
+
+func set_remaining_loot(remaining: Dictionary) -> void:
+	loot = remaining
+	if loot.is_empty():
+		_looted = true
+		_despawn = minf(_despawn, LIFE_AFTER_LOOT)
+	else:
+		_label.visible = true
 
 
 func _weighted_pick() -> String:

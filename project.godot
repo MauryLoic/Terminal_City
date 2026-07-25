@@ -21,6 +21,7 @@ Net="*res://scripts/network_client.gd"
 Inventory="*res://scripts/inventory.gd"
 Sfx="*res://scripts/sfx.gd"
 Hotbar="*res://scripts/hotbar.gd"
+LootWindow="*res://scripts/loot_window.gd"
 
 [display]
 

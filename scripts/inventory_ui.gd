@@ -209,6 +209,10 @@ func close() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Don't toggle the inventory while looting a mob (mouse conflict)
+	var lw := get_tree().get_first_node_in_group("loot_window")
+	if lw != null and lw.is_open():
+		return
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_I:
 		if $Center.visible:
